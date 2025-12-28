@@ -170,6 +170,20 @@ class HttpService {
     }
   }
 
+  Future<dynamic> uploadFile(String path, String filePath) async {
+    try {
+      final fileName = filePath.split('/').last;
+      final formData = FormData.fromMap({
+        'file': await MultipartFile.fromFile(filePath, filename: fileName),
+      });
+      
+      final response = await _dio.post(path, data: formData);
+      return _handleResponse(response);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   dynamic _handleResponse(Response response) {
     if (response.statusCode == 200) {
       final body = response.data;

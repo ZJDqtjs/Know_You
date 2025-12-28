@@ -22,6 +22,7 @@ class AuthApi {
   Future<dynamic> refresh(String refreshToken) => _http.post('/auth/refresh', data: {'refreshToken': refreshToken});
   Future<dynamic> me() => _http.get('/users/me');
   Future<dynamic> updateMe(Map<String, dynamic> payload) => _http.put('/users/me', data: payload);
+  Future<dynamic> uploadAvatar(String filePath) => _http.uploadFile('/files/upload', filePath);
 }
 
 class BindingsApi {

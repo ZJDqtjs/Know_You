@@ -71,4 +71,9 @@ class AuthProvider extends ChangeNotifier {
     NotificationService().disconnect();
     notifyListeners();
   }
+
+  void updateUser(Map<String, dynamic> updatedUser) {
+    _user = updatedUser;
+    notifyListeners();
+  }
 }

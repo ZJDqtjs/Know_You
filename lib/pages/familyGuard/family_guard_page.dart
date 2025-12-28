@@ -90,100 +90,117 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('亲情守护')),
-      body: _isLoading 
+        body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                // Member List (Horizontal Scroll or Grid)
-                Container(
-                  height: 120.h,
-                  padding: EdgeInsets.symmetric(vertical: 10.h),
-                  color: Colors.white,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _members.length + 1,
-                    itemBuilder: (context, index) {
-                      if (index == _members.length) {
-                        // Add button
-                        return GestureDetector(
-                          onTap: _showAddBindingDialog,
-                          child: Container(
-                            width: 80.w,
-                            margin: EdgeInsets.symmetric(horizontal: 10.w),
-                            child: Column(
-                              children: [
-                                CircleAvatar(
-                                  radius: 30.w,
-                                  backgroundColor: Colors.grey[200],
-                                  child: Icon(Icons.add, size: 30.w, color: Colors.grey),
-                                ),
-                                SizedBox(height: 5.h),
-                                Text('绑定', style: TextStyle(fontSize: 12.sp)),
-                              ],
-                            ),
-                          ),
-                        );
-                      }
-                      
-                      final member = _members[index];
-                      final isSelected = index == _activeIndex;
-                      final name = member['nickname'] ?? member['username'] ?? 'User ${member['id']}';
-                      
-                      return GestureDetector(
-                        onTap: () => setState(() => _activeIndex = index),
-                        child: Container(
-                          width: 80.w,
-                          margin: EdgeInsets.symmetric(horizontal: 10.w),
-                          child: SizedBox(
-                            height: 100.h,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(2.w),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: isSelected ? Border.all(color: Colors.green, width: 2.w) : null,
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 28.w,
-                                    backgroundColor: Colors.grey[200],
-                                    child: const Icon(Icons.person, color: Colors.black54),
-                                  ),
-                                ),
-                                SizedBox(height: 8.h),
-                                Text(
-                                  name,
-                                  style: TextStyle(
-                                    fontSize: 12.sp,
-                                    color: isSelected ? Colors.green : Colors.black,
-                                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                Expanded(
-                  child: _members.isEmpty 
-                      ? const Center(child: Text('尚未绑定家人'))
-                      : SingleChildScrollView(
+          : SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 12.h),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                        child: IntrinsicHeight(
                           child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              if (_activeIndex != -1) ...[
+                              // Member List (Horizontal Scroll or Grid)
+                              Container(
+                                height: 100.h,
+                                padding: EdgeInsets.symmetric(vertical: 8.h),
+                                color: Colors.white,
+                                child: ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: _members.length + 1,
+                                  itemBuilder: (context, index) {
+                                    if (index == _members.length) {
+                                      // Add button
+                                      return GestureDetector(
+                                        onTap: _showAddBindingDialog,
+                                        child: Container(
+                                          width: 80.w,
+                                          margin: EdgeInsets.symmetric(horizontal: 10.w),
+                                          child: Column(
+                                            children: [
+                                              CircleAvatar(
+                                                radius: 30.w,
+                                                backgroundColor: Colors.grey[200],
+                                                child: Icon(Icons.add, size: 30.w, color: Colors.grey),
+                                              ),
+                                              SizedBox(height: 5.h),
+                                              Text('绑定', style: TextStyle(fontSize: 12.sp)),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    
+                                    final member = _members[index];
+                                    final isSelected = index == _activeIndex;
+                                    final name = member['nickname'] ?? member['username'] ?? 'User ${member['id']}';
+                                    final avatarUrl = member['avatar'];
+                                    
+                                    return GestureDetector(
+                                      onTap: () => setState(() => _activeIndex = index),
+                                      child: Container(
+                                        width: 80.w,
+                                        margin: EdgeInsets.symmetric(horizontal: 10.w),
+                                        child: SizedBox(
+                                          height: 84.h,
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.start,
+                                            children: [
+                                              Container(
+                                                padding: EdgeInsets.all(2.w),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: isSelected ? Border.all(color: Colors.green, width: 2.w) : null,
+                                                ),
+                                                child: CircleAvatar(
+                                                  radius: 28.w,
+                                                  backgroundColor: const Color(0xFFE1BEE7),
+                                                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                                                      ? NetworkImage(avatarUrl)
+                                                      : null,
+                                                  child: avatarUrl == null || avatarUrl.isEmpty
+                                                      ? const Icon(Icons.person, color: Colors.white)
+                                                      : null,
+                                                ),
+                                              ),
+                                              SizedBox(height: 8.h),
+                                              Text(
+                                                name,
+                                                style: TextStyle(
+                                                  fontSize: 12.sp,
+                                                  color: isSelected ? Colors.green : Colors.black,
+                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              const SizedBox(height: 12),
+
+                              if (_members.isEmpty)
+                                const Center(child: Text('尚未绑定家人'))
+                              else if (_activeIndex != -1)
                                 _buildDetailCard(_members[_activeIndex]),
-                              ]
+                              const Spacer(),
                             ],
                           ),
                         ),
+                      ),
+                    );
+                  },
                 ),
-              ],
+              ),
             ),
     );
   }
@@ -217,13 +234,13 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
         CommonCard(
           child: Column(
             children: [
-              _buildHealthRow('assets/static/images/icon-weather.svg', '今日天气', '7°C~18°C'),
+              _buildHealthRow(Icons.wb_sunny, '今日天气', '7°C~18°C', const Color(0xFFFFA726)),
               SizedBox(height: 10.h),
-              _buildHealthRow('assets/static/images/icon-sleep.svg', '睡眠时长', '8小时48分钟'),
+              _buildHealthRow(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
               SizedBox(height: 10.h),
-              _buildHealthRow('assets/static/images/icon-bp.svg', '血压', '收缩压: 125mmHg 舒张压: 75mmHg'),
+              _buildHealthRow(Icons.favorite, '血压', '收缩压: 125mmHg 舒张压: 75mmHg', const Color(0xFFEF5350)),
               SizedBox(height: 10.h),
-              _buildHealthRow('assets/static/images/icon-heart.svg', '心率', '平均心率: 70次/分'),
+              _buildHealthRow(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
             ],
           ),
         ),
@@ -231,14 +248,14 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
     );
   }
 
-  Widget _buildHealthRow(String icon, String label, String value) {
+  Widget _buildHealthRow(IconData icon, String label, String value, Color iconColor) {
     return Row(
       children: [
-        Image.asset(icon, width: 24.w, height: 24.w, errorBuilder: (c,e,s) => const Icon(Icons.health_and_safety, color: Colors.green)),
+        Icon(icon, size: 24.w, color: iconColor),
         SizedBox(width: 10.w),
-        Text(label, style: TextStyle(color: Colors.green[700])),
+        Text(label, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500)),
         const Spacer(),
-        Text(value, style: const TextStyle(color: Colors.grey)),
+        Flexible(child: Text(value, style: const TextStyle(color: Colors.grey), textAlign: TextAlign.right)),
       ],
     );
   }
@@ -320,20 +337,29 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
     };
 
     _webRTC!.onMessage = (msg) {
-      if (msg is Map && msg['type'] == 'session-accepted') {
-        _rtcStatusText = '对方已同意，正在连接...';
-      } else if (msg is Map && msg['type'] == 'session-rejected') {
-        _rtcStatusText = '对方已拒绝';
-        Fluttertoast.showToast(msg: '对方拒绝了远程协助');
-        _stopRemoteControl(closeDialog: true);
+      if (msg is Map) {
+        if (msg['type'] == 'session-accepted') {
+          _rtcStatusText = '对方已同意，正在建立连接...';
+          _bumpAssistUi();
+        } else if (msg['type'] == 'session-rejected') {
+          _rtcStatusText = '对方已拒绝';
+          Fluttertoast.showToast(msg: '对方拒绝了远程协助');
+          _stopRemoteControl(closeDialog: true);
+        }
       }
       _bumpAssistUi();
     };
 
     _webRTC!.onError = (e) {
-      Fluttertoast.showToast(msg: '连接错误: $e');
-      _rtcStatusText = '连接错误';
-      _stopRemoteControl(closeDialog: true);
+      print('[FamilyGuard] WebRTC error: $e');
+      // Don't show toast for "target not connected" errors during initial connection
+      if (e.toString().contains('not connected')) {
+        _rtcStatusText = '等待对方接受并连接...';
+      } else {
+        Fluttertoast.showToast(msg: '连接错误: $e');
+        _rtcStatusText = '连接错误';
+        _stopRemoteControl(closeDialog: true);
+      }
       _bumpAssistUi();
     };
     

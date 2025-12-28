@@ -59,6 +59,8 @@ class WebRTCService {
 
   Future<void> initAsViewer(int targetUserId) async {
     _isInitiator = true;
+    _readySent = false;
+    print('[WebRTC] Initializing as VIEWER (initiator), _isInitiator=$_isInitiator');
     try {
       final res = await Api.screen.createSession(targetUserId);
       _sessionId = res['sessionId'] ?? res['id']; // Adjust based on actual API response
@@ -74,6 +76,8 @@ class WebRTCService {
   Future<void> initAsSharer(String sessionId) async {
     _isInitiator = false;
     _sessionId = sessionId;
+    _readySent = false;
+    print('[WebRTC] Initializing as SHARER (target), _isInitiator=$_isInitiator, sessionId=$sessionId');
     try {
        await _connectWebSocket();
     } catch (e) {
@@ -155,20 +159,31 @@ class WebRTCService {
 
         switch (type) {
           case 'connected':
+             // Backend currently仅向控制端推送 session_status:active。
+             // 为保证握手，目标端在连接建立后也主动发送 ready。
+             if (!_isInitiator && !_readySent) {
+               print('[WebRTC] Target sending ready after connected');
+               _sendSignalingMessage('ready', {});
+               _readySent = true;
+             }
              break;
           case 'session_status':
-             if (payload['status'] == 'active') {
+             final status = payload['status'];
+             print('[WebRTC] Session status: $status, _isInitiator=$_isInitiator, _readySent=$_readySent');
+             
+             if (status == 'active') {
                onMessage?.call({'type': 'session-accepted', 'data': payload});
-               if (!_readySent) {
-                 // Give the peer time to join WebSocket before sending ready to avoid "target not connected"
-                 Future.delayed(const Duration(seconds: 1), () {
-                   if (!_readySent && _channel != null) {
-                     _sendSignalingMessage('ready', {});
-                     _readySent = true;
-                   }
-                 });
+               
+               // Target (sharer) sends ready after accepting
+               print('[WebRTC] Checking ready conditions: _readySent=$_readySent, _isInitiator=$_isInitiator');
+               if (!_readySent && !_isInitiator) {
+                 print('[WebRTC] Target sending ready signal');
+                 _sendSignalingMessage('ready', {});
+                 _readySent = true;
+               } else {
+                 print('[WebRTC] NOT sending ready: _readySent=$_readySent, _isInitiator=$_isInitiator');
                }
-             } else if (payload['status'] == 'rejected') {
+             } else if (status == 'rejected') {
                _setState(WebRTCConnectionState.failed);
                onMessage?.call({'type': 'session-rejected'});
                close();
@@ -177,13 +192,24 @@ class WebRTCService {
              }
              break;
           case 'ready':
-             if (_isInitiator) {
+             print('[WebRTC] Received ready signal, _isInitiator=$_isInitiator, _readySent=$_readySent');
+             // Initiator creates offer when target is ready
+             if (_isInitiator && !_readySent) {
+               print('[WebRTC] Initiator creating peer connection and offer');
+               _readySent = true;
                await _createPeerConnection();
                await _createOffer();
+             } else {
+               print('[WebRTC] NOT creating offer: _isInitiator=$_isInitiator, _readySent=$_readySent');
              }
              break;
           case 'offer':
+             print('[WebRTC] Received offer from initiator');
+             // Target creates peer connection when receiving offer
              if (!_isInitiator) {
+               if (_peerConnection == null) {
+                 await _createPeerConnection();
+               }
                await _handleOffer(payload);
              }
              break;
@@ -207,8 +233,16 @@ class WebRTCService {
              close();
              break;
           case 'error':
-             print('[WebRTC] Server error: $message');
-             onError?.call(message);
+             final errorMsg = message['error'] ?? message['message'] ?? 'Unknown error';
+             print('[WebRTC] Server error: $errorMsg');
+             
+             // Don't immediately fail on "Peer target not connected" - they might still be connecting
+             if (errorMsg.toString().contains('not connected')) {
+               print('[WebRTC] Target not connected yet, waiting...');
+             } else {
+               onError?.call(message);
+               _setState(WebRTCConnectionState.failed);
+             }
              break;
         }
       }
@@ -261,13 +295,12 @@ class WebRTCService {
       }
     };
 
-    // Add local tracks if needed (Sharer)
-    // For now, I'll skip implementation of screen capture start here, as it usually requires platform specific code or flutter_webrtc plugins.
-    // The user said "functionality is complete" in source, I need to replicate it.
-    // If I am Sharer, I need to capture screen.
-    if (!_isInitiator) {
-       // Logic to start screen capture
-       // In flutter_webrtc, navigator.mediaDevices.getDisplayMedia
+    // Attach local tracks for sharer if already available
+    if (!_isInitiator && _localStream != null) {
+      for (var track in _localStream!.getTracks()) {
+        await _peerConnection!.addTrack(track, _localStream!);
+      }
+      print('[WebRTC] Added ${_localStream!.getTracks().length} local tracks to peer connection');
     } else {
        // Initiator is recvonly.
        // Add transceiver for video recvonly
@@ -282,15 +315,38 @@ class WebRTCService {
     if (_isInitiator) return;
     
     try {
-      final mediaConstraints = <String, dynamic>{
-        'audio': false,
-        'video': true
-      };
+      // Prefer display media for screen sharing; fallback to camera if unavailable
+      try {
+        _localStream = await navigator.mediaDevices.getDisplayMedia({
+          'audio': false,
+          'video': {
+            'frameRate': 15,
+            'width': {'ideal': 1280},
+            'height': {'ideal': 720},
+          }
+        });
+        print('[WebRTC] getDisplayMedia success');
+      } catch (e) {
+        print('[WebRTC] getDisplayMedia failed, fallback to getUserMedia: $e');
+        _localStream = await navigator.mediaDevices.getUserMedia({
+          'audio': false,
+          'video': {
+            'mandatory': {
+              'minWidth': '640',
+              'minHeight': '480',
+              'minFrameRate': '15',
+            },
+            'facingMode': 'environment',
+            'optional': [],
+          }
+        });
+      }
       
-      _localStream = await navigator.mediaDevices.getDisplayMedia(mediaConstraints);
       _localStream!.getTracks().forEach((track) {
         _peerConnection?.addTrack(track, _localStream!);
       });
+      
+      print('[WebRTC] Screen share started with ${_localStream!.getTracks().length} tracks');
     } catch (e) {
       print('[WebRTC] Start screen share error: $e');
       rethrow;
@@ -325,29 +381,35 @@ class WebRTCService {
 
   Future<void> _handleOffer(dynamic payload) async {
     try {
+      // Target needs local stream before creating peer connection
       if (_peerConnection == null) {
-        await _createPeerConnection();
-        // If sharer, start screen share now or ensure it's ready
-        if (_localStream == null) {
-             // Request screen share permission and start
-             await startScreenShare();
+        // Start screen share BEFORE creating peer connection
+        if (!_isInitiator && _localStream == null) {
+           print('[WebRTC] Starting screen share before creating peer connection');
+           await startScreenShare();
         }
+        
+        await _createPeerConnection();
       }
       
       String sdp = payload['sdp'];
       String type = payload['type'];
       
+      print('[WebRTC] Setting remote description');
       await _peerConnection!.setRemoteDescription(RTCSessionDescription(sdp, type));
       
+      print('[WebRTC] Creating answer');
       RTCSessionDescription answer = await _peerConnection!.createAnswer();
       await _peerConnection!.setLocalDescription(answer);
       
+      print('[WebRTC] Sending answer');
       _sendSignalingMessage('answer', {
         'type': answer.type,
         'sdp': answer.sdp,
       });
     } catch (e) {
        print('[WebRTC] Handle offer error: $e');
+       onError?.call(e);
     }
   }
 
@@ -381,7 +443,10 @@ class WebRTCService {
         'type': type,
         'payload': payload
       });
+      print('[WebRTC] Sending message: type=$type, payload=$payload');
       _channel!.sink.add(msg);
+    } else {
+      print('[WebRTC] ERROR: Cannot send $type message, WebSocket channel is null');
     }
   }
 
@@ -404,6 +469,7 @@ class WebRTCService {
   }
 
   void _closeInternal() {
+    print('[WebRTC] Closing internal resources');
     _stopHeartbeat();
     _channel?.sink.close();
     _channel = null;
@@ -416,6 +482,7 @@ class WebRTCService {
     
     _sessionId = null;
     _readySent = false;
+    // Don't reset _isInitiator here - it should be set on next init
     _remoteStream = null;
     
     _setState(WebRTCConnectionState.closed);

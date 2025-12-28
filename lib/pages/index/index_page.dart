@@ -30,10 +30,7 @@ class _IndexPageState extends State<IndexPage> {
     final userName = (user != null && (user['nickname'] != null || user['username'] != null))
         ? (user['nickname'] ?? user['username'])
         : '请登录';
-    // Handle avatar URL: if relative, make absolute. But here we use local assets or network
-    // The original code uses upload.toAbsoluteUrl.
-    // For now, use local placeholder if null.
-    // userAvatar = (user && user.avatar) ? upload.toAbsoluteUrl(user.avatar) : '/static/images/avatar.svg'
+    final avatarUrl = user?['avatar'];
 
     return Scaffold(
       appBar: AppBar(
@@ -47,14 +44,15 @@ class _IndexPageState extends State<IndexPage> {
             CommonCard(
               child: Row(
                 children: [
-                  ClipOval(
-                    child: Image.asset(
-                      'assets/static/images/avatar.svg', // Placeholder
-                      width: 55.w,
-                      height: 55.w,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c,e,s) => Container(color: Colors.grey[200], width: 55.w, height: 55.w),
-                    ),
+                  CircleAvatar(
+                    radius: 27.5.w,
+                    backgroundColor: const Color(0xFFE1BEE7),
+                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty 
+                        ? NetworkImage(avatarUrl) 
+                        : null,
+                    child: avatarUrl == null || avatarUrl.isEmpty
+                        ? Icon(Icons.person, size: 30.w, color: Colors.white)
+                        : null,
                   ),
                   SizedBox(width: 12.w),
                   Column(
@@ -138,13 +136,13 @@ class _IndexPageState extends State<IndexPage> {
             CommonCard(
               child: Column(
                 children: [
-                  _buildHealthItem('assets/static/images/icon-weather.svg', '今日天气', '7°C~18°C'),
+                  _buildHealthItem(Icons.wb_sunny, '今日天气', '7°C~18°C', const Color(0xFFFFA726)),
                   SizedBox(height: 10.h),
-                  _buildHealthItem('assets/static/images/icon-sleep.svg', '睡眠时长', '8小时48分钟'),
+                  _buildHealthItem(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
                   SizedBox(height: 10.h),
-                  _buildHealthItem('assets/static/images/icon-bp.svg', '血压', '收缩压: 125mmHg 舒张压: 75mmHg'),
+                  _buildHealthItem(Icons.favorite, '血压', '收缩压: 125mmHg 舒张压: 75mmHg', const Color(0xFFEF5350)),
                   SizedBox(height: 10.h),
-                  _buildHealthItem('assets/static/images/icon-heart.svg', '心率', '平均心率: 70次/分'),
+                  _buildHealthItem(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
                 ],
               ),
             ),
@@ -175,19 +173,19 @@ class _IndexPageState extends State<IndexPage> {
     );
   }
 
-  Widget _buildHealthItem(String iconPath, String label, String value) {
+  Widget _buildHealthItem(IconData icon, String label, String value, Color iconColor) {
     return Container(
       padding: EdgeInsets.all(15.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFC8E6C9)),
+        border: Border.all(color: const Color(0xFFE0E0E0)),
         borderRadius: BorderRadius.circular(10.r),
       ),
       child: Row(
         children: [
-          Image.asset(iconPath, width: 30.w, height: 30.w, errorBuilder: (c,e,s) => Icon(Icons.health_and_safety, size: 30.w, color: Colors.green)),
+          Icon(icon, size: 30.w, color: iconColor),
           SizedBox(width: 12.w),
-          Text(label, style: TextStyle(fontSize: 15.sp, color: const Color(0xFF43A047), fontWeight: FontWeight.w500)),
+          Text(label, style: TextStyle(fontSize: 15.sp, color: const Color(0xFF333333), fontWeight: FontWeight.w500)),
           const Spacer(),
           Text(value, style: TextStyle(fontSize: 14.sp, color: const Color(0xFF666666))),
         ],
