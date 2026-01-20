@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../common/floating_ball_service.dart';
+import '../common/shizuku_service.dart';
 import 'index/index_page.dart';
 import 'familyGuard/family_guard_page.dart';
 import 'mine/mine_page.dart';
@@ -26,10 +27,13 @@ class _MainPageState extends State<MainPage> {
     super.initState();
     // 延迟启动悬浮球，确保 Overlay 已经准备好
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // 先给 ShizukuService 一些时间自动启用无障碍（如果配置了）
+      await Future.delayed(const Duration(seconds: 1));
+      
       final service = Provider.of<FloatingBallService>(context, listen: false);
       
       if (!service.isEnabled) {
-        // 先检查无障碍服务
+        // 检查无障碍服务
         await _checkAccessibilityService();
         service.enable(context);
       }
@@ -88,7 +92,30 @@ class _MainPageState extends State<MainPage> {
       final isEnabled = await platform.invokeMethod<bool>('isAccessibilityEnabled') ?? false;
       
       if (!isEnabled && mounted) {
-        // 显示提示对话框
+        // 检查是否配置了 Shizuku 保活方式
+        final shizukuService = Provider.of<ShizukuService>(context, listen: false);
+        
+        // 如果配置了 Shizuku 保活方式，等待 Shizuku 尝试自动启用
+        if (shizukuService.keepAliveMethod == KeepAliveMethod.shizuku) {
+          // 等待 Shizuku 尝试自动启用（最多等待 5 秒）
+          for (int i = 0; i < 10; i++) {
+            await Future.delayed(const Duration(milliseconds: 500));
+            await shizukuService.refreshStatus();
+            
+            if (shizukuService.isAccessibilityEnabled) {
+              print('[MainPage] Shizuku 已自动启用无障碍服务');
+              return; // 已启用，不需要弹窗
+            }
+          }
+          
+          // 如果 Shizuku 可用但未能启用，说明可能是首次授权或网络问题
+          if (shizukuService.isShizukuAvailable) {
+            print('[MainPage] Shizuku 可用但未能自动启用，跳过弹窗让用户手动操作');
+            return; // 让用户去设置页面手动处理
+          }
+        }
+        
+        // 没有配置保活方式或 Shizuku 不可用，显示提示对话框
         showDialog(
           context: context,
           builder: (context) => AlertDialog(

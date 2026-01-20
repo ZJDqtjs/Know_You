@@ -5,8 +5,10 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter/services.dart';
 import '../../common/api.dart';
 import '../../common/auth_provider.dart';
+import '../../common/shizuku_service.dart';
 import '../../widgets/common_card.dart';
 import 'edit_profile_page.dart';
+import 'accessibility_keep_alive_page.dart';
 
 class MinePage extends StatefulWidget {
   const MinePage({super.key});
@@ -181,6 +183,57 @@ class _MinePageState extends State<MinePage> {
             ),
 
             SizedBox(height: 20.h),
+            
+            // 无障碍保活设置入口
+            CommonCard(
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AccessibilityKeepAlivePage()),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.accessibility_new, color: Colors.green),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('无障碍保活', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500)),
+                          Consumer<ShizukuService>(
+                            builder: (context, service, _) {
+                              String statusText;
+                              Color statusColor;
+                              if (service.isAccessibilityEnabled) {
+                                statusText = '无障碍服务运行中';
+                                statusColor = Colors.green;
+                              } else {
+                                statusText = '未启用';
+                                statusColor = Colors.orange;
+                              }
+                              return Text(
+                                statusText,
+                                style: TextStyle(fontSize: 12.sp, color: statusColor),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
             
             // Logout
             Padding(

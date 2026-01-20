@@ -18,6 +18,19 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
+    
+    // 启用 BuildConfig 生成
+    buildFeatures {
+        buildConfig = true
+        aidl = true
+    }
+    
+    // 配置 AIDL 源集
+    sourceSets {
+        getByName("main") {
+            aidl.srcDirs("src/main/aidl")
+        }
+    }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
@@ -41,4 +54,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Shizuku API
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
 }

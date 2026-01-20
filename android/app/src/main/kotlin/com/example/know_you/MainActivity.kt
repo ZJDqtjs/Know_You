@@ -14,12 +14,141 @@ class MainActivity : FlutterActivity() {
     private val FOREGROUND_SERVICE_CHANNEL = "com.example.know_you/foreground_service"
     private val FLOATING_BALL_CHANNEL = "com.example.know_you/floating_ball"
     private val SETTINGS_CHANNEL = "com.example.know_you/settings"
+    private val SHIZUKU_CHANNEL = "com.example.know_you/shizuku"
     
     private val OVERLAY_PERMISSION_REQUEST_CODE = 1001
     private val TTS_CHECK_CODE = 1002
+    
+    private lateinit var shizukuHelper: ShizukuHelper
+    private lateinit var wirelessAdbHelper: WirelessAdbHelper
+    private var shizukuMethodChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        shizukuHelper = ShizukuHelper(this)
+        wirelessAdbHelper = WirelessAdbHelper(this)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // Shizuku channel
+        shizukuMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHIZUKU_CHANNEL)
+        shizukuMethodChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getShizukuStatus" -> {
+                    result.success(shizukuHelper.getShizukuStatus())
+                }
+                "isShizukuInstalled" -> {
+                    result.success(shizukuHelper.isShizukuInstalled())
+                }
+                "isShizukuRunning" -> {
+                    result.success(shizukuHelper.isShizukuRunning())
+                }
+                "hasShizukuPermission" -> {
+                    result.success(shizukuHelper.hasShizukuPermission())
+                }
+                "requestShizukuPermission" -> {
+                    shizukuHelper.requestShizukuPermission()
+                    result.success(true)
+                }
+                "enableAccessibilityViaShizuku" -> {
+                    val serviceName = call.argument<String>("serviceName") 
+                        ?: "${packageName}.RemoteControlAccessibilityService"
+                    val success = shizukuHelper.enableAccessibilityService(serviceName)
+                    result.success(success)
+                }
+                "keepAccessibilityAlive" -> {
+                    val success = shizukuHelper.keepAccessibilityServiceAlive()
+                    result.success(success)
+                }
+                "isAccessibilityEnabled" -> {
+                    result.success(shizukuHelper.isOurAccessibilityServiceEnabled())
+                }
+                "hasWriteSecureSettings" -> {
+                    result.success(shizukuHelper.hasWriteSecureSettingsPermission())
+                }
+                "grantWriteSecureSettings" -> {
+                    val success = shizukuHelper.grantWriteSecureSettingsPermission()
+                    result.success(success)
+                }
+                "restartAccessibilityService" -> {
+                    Thread {
+                        try {
+                            val success = kotlinx.coroutines.runBlocking {
+                                shizukuHelper.restartAccessibilityService()
+                            }
+                            runOnUiThread {
+                                result.success(success)
+                            }
+                        } catch (e: Exception) {
+                            runOnUiThread {
+                                result.error("RESTART_FAILED", e.message, null)
+                            }
+                        }
+                    }.start()
+                }
+                "disableAccessibilityService" -> {
+                    val success = shizukuHelper.disableAccessibilityService()
+                    result.success(success)
+                }
+                "getWirelessDebugGuide" -> {
+                    result.success(wirelessAdbHelper.getWirelessDebugGuide())
+                }
+                "getAdbCommand" -> {
+                    result.success(wirelessAdbHelper.getEnableAccessibilityCommand())
+                }
+                "openShizukuApp" -> {
+                    try {
+                        val intent = context.packageManager.getLaunchIntentForPackage(ShizukuHelper.SHIZUKU_PACKAGE)
+                        if (intent != null) {
+                            startActivity(intent)
+                            result.success(true)
+                        } else {
+                            result.success(false)
+                        }
+                    } catch (e: Exception) {
+                        result.error("OPEN_FAILED", e.message, null)
+                    }
+                }
+                "openShizukuDownload" -> {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://shizuku.rikka.app/download/"))
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("OPEN_FAILED", e.message, null)
+                    }
+                }
+                "initShizukuListeners" -> {
+                    shizukuHelper.initShizukuListeners(
+                        onBinderReceived = {
+                            runOnUiThread {
+                                shizukuMethodChannel?.invokeMethod("onShizukuBinderReceived", null)
+                            }
+                        },
+                        onBinderDead = {
+                            runOnUiThread {
+                                shizukuMethodChannel?.invokeMethod("onShizukuBinderDead", null)
+                            }
+                        },
+                        onPermissionResult = { granted ->
+                            runOnUiThread {
+                                shizukuMethodChannel?.invokeMethod("onShizukuPermissionResult", mapOf("granted" to granted))
+                            }
+                        }
+                    )
+                    result.success(true)
+                }
+                "removeShizukuListeners" -> {
+                    shizukuHelper.removeShizukuListeners()
+                    result.success(true)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
 
         // Floating ball channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FLOATING_BALL_CHANNEL).setMethodCallHandler { call, result ->
