@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.os.Bundle
+import android.speech.tts.TextToSpeech
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -12,8 +13,10 @@ class MainActivity : FlutterActivity() {
     private val ACCESSIBILITY_CHANNEL = "com.example.know_you/accessibility"
     private val FOREGROUND_SERVICE_CHANNEL = "com.example.know_you/foreground_service"
     private val FLOATING_BALL_CHANNEL = "com.example.know_you/floating_ball"
+    private val SETTINGS_CHANNEL = "com.example.know_you/settings"
     
     private val OVERLAY_PERMISSION_REQUEST_CODE = 1001
+    private val TTS_CHECK_CODE = 1002
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -191,6 +194,72 @@ class MainActivity : FlutterActivity() {
                 else -> {
                     result.notImplemented()
                 }
+            }
+        }
+        
+        // Settings channel for TTS and other system settings
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SETTINGS_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openTtsSettings" -> {
+                    try {
+                        val intent = Intent("com.android.settings.TTS_SETTINGS")
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        // 尝试备用方式
+                        try {
+                            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.error("OPEN_FAILED", e2.message, null)
+                        }
+                    }
+                }
+                "checkTtsData" -> {
+                    // 检查 TTS 数据是否可用
+                    try {
+                        val checkIntent = Intent(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA)
+                        startActivityForResult(checkIntent, TTS_CHECK_CODE)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("CHECK_FAILED", e.message, null)
+                    }
+                }
+                "installTtsData" -> {
+                    // 安装 TTS 数据
+                    try {
+                        val installIntent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
+                        installIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(installIntent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("INSTALL_FAILED", e.message, null)
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == TTS_CHECK_CODE) {
+            if (resultCode != TextToSpeech.Engine.CHECK_VOICE_DATA_PASS) {
+                // TTS 数据不可用，引导用户安装
+                android.util.Log.d("MainActivity", "TTS data not available, prompting install")
+                try {
+                    val installIntent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
+                    startActivity(installIntent)
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Failed to start TTS install: ${e.message}")
+                }
+            } else {
+                android.util.Log.d("MainActivity", "TTS data is available")
             }
         }
     }

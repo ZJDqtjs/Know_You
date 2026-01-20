@@ -27,12 +27,59 @@ class _MainPageState extends State<MainPage> {
     // 延迟启动悬浮球，确保 Overlay 已经准备好
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final service = Provider.of<FloatingBallService>(context, listen: false);
+      
       if (!service.isEnabled) {
         // 先检查无障碍服务
         await _checkAccessibilityService();
         service.enable(context);
       }
     });
+  }
+  
+  @override
+  void dispose() {
+    super.dispose();
+  }
+  
+  void _showNoTtsEngineDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('缺少语音引擎'),
+          ],
+        ),
+        content: const Text(
+          '您的设备上没有安装语音合成(TTS)引擎，朗读功能将无法使用。\n\n'
+          '建议安装"Google 文字转语音"应用。',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('以后再说'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final service = Provider.of<FloatingBallService>(context, listen: false);
+              await service.openTtsSettings();
+            },
+            child: const Text('系统设置'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final service = Provider.of<FloatingBallService>(context, listen: false);
+              await service.openTtsEngineInstall();
+            },
+            child: const Text('去安装'),
+          ),
+        ],
+      ),
+    );
   }
   
   Future<void> _checkAccessibilityService() async {

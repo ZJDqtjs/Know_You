@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// 悬浮球朗读服务
 class FloatingBallService extends ChangeNotifier {
@@ -17,6 +18,7 @@ class FloatingBallService extends ChangeNotifier {
   bool _isSpeaking = false;
   bool _isInitialized = false;
   bool _useNativeFloatingBall = true;  // 使用原生悬浮球
+  bool _noTtsEngine = false;  // 标记是否没有TTS引擎
   
   OverlayEntry? _overlayEntry;
   Offset _position = const Offset(20, 200);
@@ -25,6 +27,7 @@ class FloatingBallService extends ChangeNotifier {
   bool get isReadMode => _isReadMode;
   bool get isSpeaking => _isSpeaking;
   bool get useNativeFloatingBall => _useNativeFloatingBall;
+  bool get noTtsEngine => _noTtsEngine;
   Offset get position => _position;
 
   Future<void> init() async {
@@ -39,6 +42,10 @@ class FloatingBallService extends ChangeNotifier {
       
       // 等待一段时间让TTS引擎初始化
       await Future.delayed(const Duration(milliseconds: 1000));
+      
+      // 检查引擎是否存在 - 但不完全依赖这个结果
+      final engines = await _tts!.getEngines;
+      print('Available TTS engines: $engines');
       
       // 设置handlers
       _tts!.setStartHandler(() {
@@ -57,44 +64,76 @@ class FloatingBallService extends ChangeNotifier {
         notifyListeners();
       });
       
-      // 设置语言和参数 - 尝试多次
-      for (int i = 0; i < 3; i++) {
-        try {
-          final languages = await _tts!.getLanguages;
-          print('Available languages: $languages');
-          
-          // 尝试设置中文
-          var result = await _tts!.setLanguage('zh-CN');
-          if (result == 0) {
-            // 尝试其他中文变体
-            result = await _tts!.setLanguage('zh');
-          }
-          print('setLanguage result: $result');
-          
-          await _tts!.setSpeechRate(0.5);
-          await _tts!.setVolume(1.0);
-          await _tts!.setPitch(1.0);
-          
-          // 检查引擎是否就绪
-          final engines = await _tts!.getEngines;
-          print('Available TTS engines: $engines');
-          
-          if (engines != null && (engines as List).isNotEmpty) {
-            _isInitialized = true;
-            print('TTS initialized successfully with engine: ${engines.first}');
-            break;
-          }
-        } catch (e) {
-          print('TTS init attempt $i failed: $e');
-          await Future.delayed(const Duration(milliseconds: 500));
+      // 尝试设置语言和参数 - 即使engines为空也尝试
+      try {
+        // 尝试设置中文
+        var result = await _tts!.setLanguage('zh-CN');
+        print('setLanguage zh-CN result: $result');
+        if (result == 0) {
+          result = await _tts!.setLanguage('zh');
+          print('setLanguage zh result: $result');
         }
-      }
-      
-      if (!_isInitialized) {
-        print('TTS initialization failed after retries');
+        
+        await _tts!.setSpeechRate(0.5);
+        await _tts!.setVolume(1.0);
+        await _tts!.setPitch(1.0);
+        
+        // 尝试实际朗读一个测试文本来验证TTS是否工作
+        // 使用静音测试
+        await _tts!.setVolume(0.0);
+        final testResult = await _tts!.speak(' ');  // 朗读空白
+        await Future.delayed(const Duration(milliseconds: 200));
+        await _tts!.stop();
+        await _tts!.setVolume(1.0);  // 恢复音量
+        
+        print('TTS test speak result: $testResult');
+        
+        // 如果能执行到这里且没有抛出异常，说明TTS可用
+        _isInitialized = true;
+        _noTtsEngine = false;
+        print('TTS initialized successfully');
+      } catch (e) {
+        print('TTS config/test failed: $e');
+        // 即使配置失败，也标记为已初始化，让用户可以尝试使用
+        _isInitialized = true;
+        _noTtsEngine = false;  // 不标记为没有引擎，因为系统可能有
       }
     } catch (e) {
       print('TTS init error: $e');
+      _noTtsEngine = true;
+    }
+  }
+  
+  /// 打开Google Play安装TTS引擎
+  Future<void> openTtsEngineInstall() async {
+    // Google TTS应用包名
+    const googleTtsPackage = 'com.google.android.tts';
+    final playStoreUrl = Uri.parse('market://details?id=$googleTtsPackage');
+    final webUrl = Uri.parse('https://play.google.com/store/apps/details?id=$googleTtsPackage');
+    
+    try {
+      if (await canLaunchUrl(playStoreUrl)) {
+        await launchUrl(playStoreUrl);
+      } else if (await canLaunchUrl(webUrl)) {
+        await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      print('Failed to open TTS install page: $e');
+    }
+  }
+  
+  /// 打开系统TTS设置
+  Future<void> openTtsSettings() async {
+    try {
+      const settingsChannel = MethodChannel('com.example.know_you/settings');
+      await settingsChannel.invokeMethod('openTtsSettings');
+    } catch (e) {
+      print('Failed to open TTS settings: $e');
+      // 尝试使用通用设置intent
+      final settingsUrl = Uri.parse('package:com.android.settings');
+      if (await canLaunchUrl(settingsUrl)) {
+        await launchUrl(settingsUrl);
+      }
     }
   }
   
@@ -106,6 +145,11 @@ class FloatingBallService extends ChangeNotifier {
         _isReadMode = isReadMode;
         // 不触发notifyListeners以避免页面刷新
         // notifyListeners();
+        return true;
+      case 'onNoTtsEngine':
+        // 原生端通知没有TTS引擎
+        _noTtsEngine = true;
+        notifyListeners();  // 触发UI更新
         return true;
       case 'speakText':
         // 原生端请求Flutter TTS朗读
@@ -220,12 +264,10 @@ class FloatingBallService extends ChangeNotifier {
     }
     
     if (_tts == null) {
-      print('TTS still null after init');
-      return;
+      print('TTS still null after init, creating new instance');
+      _tts = FlutterTts();
+      await Future.delayed(const Duration(milliseconds: 500));
     }
-    
-    // 再次等待确保引擎就绪
-    await Future.delayed(const Duration(milliseconds: 300));
     
     try {
       // 尝试停止之前的朗读
@@ -237,20 +279,30 @@ class FloatingBallService extends ChangeNotifier {
       
       await Future.delayed(const Duration(milliseconds: 100));
       
-      // 尝试朗读
+      // 直接尝试朗读，不管之前的检测结果
       var result = await _tts!.speak(text);
       print('TTS speak result: $result');
       
       // 如果失败，重新创建TTS实例并重试
       if (result != 1) {
-        print('TTS speak failed, recreating TTS instance...');
+        print('TTS speak failed (result=$result), recreating TTS instance...');
         _tts = FlutterTts();
         await Future.delayed(const Duration(milliseconds: 800));
         
-        await _tts!.setLanguage('zh-CN');
-        await _tts!.setSpeechRate(0.5);
-        await _tts!.setVolume(1.0);
-        await _tts!.setPitch(1.0);
+        // 设置语言
+        try {
+          await _tts!.setLanguage('zh-CN');
+        } catch (e) {
+          print('setLanguage failed: $e');
+        }
+        
+        try {
+          await _tts!.setSpeechRate(0.5);
+          await _tts!.setVolume(1.0);
+          await _tts!.setPitch(1.0);
+        } catch (e) {
+          print('TTS config failed: $e');
+        }
         
         await Future.delayed(const Duration(milliseconds: 200));
         result = await _tts!.speak(text);

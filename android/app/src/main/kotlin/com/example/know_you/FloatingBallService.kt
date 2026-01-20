@@ -23,6 +23,7 @@ class FloatingBallService : Service(), TextToSpeech.OnInitListener {
     private var isReadMode = false
     private var tts: TextToSpeech? = null
     private var ttsInitialized = false
+    private var pendingText: String? = null  // 保存待朗读的文本
     
     companion object {
         private var methodChannel: MethodChannel? = null
@@ -40,23 +41,70 @@ class FloatingBallService : Service(), TextToSpeech.OnInitListener {
         serviceInstance = this
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         
-        // 初始化TTS
-        tts = TextToSpeech(this, this)
+        // 初始化TTS - 使用系统默认引擎
+        initTTS()
         
         createFloatingView()
     }
     
+    private fun initTTS() {
+        CoroutineScope(Dispatchers.Main).launch {
+            // 给系统服务绑定时间
+            delay(500)
+            
+            // 使用系统默认TTS引擎初始化，不指定特定引擎
+            tts = TextToSpeech(this@FloatingBallService, this@FloatingBallService)
+            
+            android.util.Log.d("FloatingBallService", "TTS instance created, waiting for onInit callback")
+        }
+    }
+    
     override fun onInit(status: Int) {
+        android.util.Log.d("FloatingBallService", "TTS onInit called with status: $status")
         if (status == TextToSpeech.SUCCESS) {
-            val result = tts?.setLanguage(Locale.CHINESE)
+            // 获取当前默认引擎信息
+            val defaultEngine = tts?.defaultEngine
+            android.util.Log.d("FloatingBallService", "Default TTS engine: $defaultEngine")
+            
+            // 获取可用引擎列表
+            val engines = tts?.engines
+            android.util.Log.d("FloatingBallService", "Available TTS engines: ${engines?.map { it.name }}")
+            
+            // 尝试设置中文
+            var result = tts?.setLanguage(Locale.CHINESE)
+            android.util.Log.d("FloatingBallService", "setLanguage CHINESE result: $result")
+            
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                // 尝试使用默认语言
-                tts?.setLanguage(Locale.getDefault())
+                // 尝试简体中文
+                result = tts?.setLanguage(Locale.SIMPLIFIED_CHINESE)
+                android.util.Log.d("FloatingBallService", "setLanguage SIMPLIFIED_CHINESE result: $result")
             }
+            
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                // 使用默认语言
+                result = tts?.setLanguage(Locale.getDefault())
+                android.util.Log.d("FloatingBallService", "setLanguage DEFAULT result: $result")
+            }
+            
             ttsInitialized = true
-            android.util.Log.d("FloatingBallService", "TTS initialized successfully")
+            android.util.Log.d("FloatingBallService", "TTS initialized successfully with engine: $defaultEngine")
+            
+            // 如果有待朗读的文本，现在朗读
+            pendingText?.let { text ->
+                android.util.Log.d("FloatingBallService", "Speaking pending text: $text")
+                CoroutineScope(Dispatchers.Main).launch {
+                    delay(200)  // 短暂延迟确保引擎完全就绪
+                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "utterance_pending")
+                    pendingText = null
+                }
+            }
         } else {
-            android.util.Log.e("FloatingBallService", "TTS initialization failed")
+            android.util.Log.e("FloatingBallService", "TTS initialization failed with status: $status")
+            ttsInitialized = false
+            // 提示用户去设置中激活TTS
+            CoroutineScope(Dispatchers.Main).launch {
+                Toast.makeText(this@FloatingBallService, "语音引擎未就绪，请在设置中启用", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -258,13 +306,50 @@ class FloatingBallService : Service(), TextToSpeech.OnInitListener {
     }
     
     private fun speakText(text: String) {
-        if (ttsInitialized && tts != null) {
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "utterance_${System.currentTimeMillis()}")
-            android.util.Log.d("FloatingBallService", "Speaking: $text")
-        } else {
-            // 尝试重新初始化TTS
-            tts = TextToSpeech(this, this)
+        android.util.Log.d("FloatingBallService", "speakText called: $text, ttsInitialized=$ttsInitialized")
+        
+        // 保存文本以便重试
+        pendingText = text
+        
+        if (tts != null && ttsInitialized) {
+            // 使用协程确保在主线程执行
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    // 尝试朗读
+                    val result = tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "utterance_${System.currentTimeMillis()}")
+                    android.util.Log.d("FloatingBallService", "TTS speak result: $result, Speaking: $text")
+                    
+                    if (result == TextToSpeech.SUCCESS) {
+                        pendingText = null  // 成功后清除
+                    } else {
+                        android.util.Log.e("FloatingBallService", "TTS speak failed with result: $result")
+                        // Android 12+ 可能需要重新绑定引擎
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            android.util.Log.d("FloatingBallService", "Android 12+, reinitializing TTS")
+                            tts?.shutdown()
+                            ttsInitialized = false
+                            delay(300)
+                            initTTS()
+                            Toast.makeText(this@FloatingBallService, "正在重新连接语音引擎...", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@FloatingBallService, "语音引擎重新初始化中...", Toast.LENGTH_SHORT).show()
+                            tts?.shutdown()
+                            ttsInitialized = false
+                            tts = TextToSpeech(this@FloatingBallService, this@FloatingBallService)
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("FloatingBallService", "TTS speak exception: ${e.message}")
+                }
+            }
+        } else if (tts == null) {
+            android.util.Log.e("FloatingBallService", "TTS is null, creating new instance")
+            initTTS()
             Toast.makeText(this, "语音引擎初始化中...", Toast.LENGTH_SHORT).show()
+        } else {
+            // tts存在但未初始化完成
+            android.util.Log.d("FloatingBallService", "TTS not ready yet, waiting for onInit")
+            Toast.makeText(this, "语音引擎正在准备...", Toast.LENGTH_SHORT).show()
         }
     }
 
