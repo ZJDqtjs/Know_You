@@ -393,12 +393,16 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
 
   // Gesture tracking for swipe detection
   Offset? _panStartPosition;
+  Offset? _panCurrentPosition;
   DateTime? _panStartTime;
+  
+  // Key for the video container to get its size
+  final GlobalKey _videoContainerKey = GlobalKey();
 
   void _sendClick(TapUpDetails details) {
     if (_webRTC != null) {
-      // Get the RenderBox of the video view to calculate proper coordinates
-      final RenderBox? box = context.findRenderObject() as RenderBox?;
+      // Use the video container's size for coordinate calculation
+      final RenderBox? box = _videoContainerKey.currentContext?.findRenderObject() as RenderBox?;
       if (box != null) {
         final size = box.size;
         final x = details.localPosition.dx / size.width;
@@ -412,44 +416,45 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
 
   void _onPanStart(DragStartDetails details) {
     _panStartPosition = details.localPosition;
+    _panCurrentPosition = details.localPosition;
     _panStartTime = DateTime.now();
   }
 
+  void _onPanUpdate(DragUpdateDetails details) {
+    // Track the actual current position during drag
+    _panCurrentPosition = details.localPosition;
+  }
+
   void _onPanEnd(DragEndDetails details) {
-    if (_webRTC != null && _panStartPosition != null && _panStartTime != null) {
-      final RenderBox? box = context.findRenderObject() as RenderBox?;
+    if (_webRTC != null && _panStartPosition != null && _panCurrentPosition != null && _panStartTime != null) {
+      final RenderBox? box = _videoContainerKey.currentContext?.findRenderObject() as RenderBox?;
       if (box != null) {
         final size = box.size;
         final duration = DateTime.now().difference(_panStartTime!).inMilliseconds;
         
-        // Get current position from velocity
-        final velocity = details.velocity.pixelsPerSecond;
-        final endPosition = _panStartPosition! + Offset(
-          velocity.dx * 0.1, // Estimate end position from velocity
-          velocity.dy * 0.1,
-        );
-        
+        // Use actual tracked positions instead of velocity estimation
         final startX = _panStartPosition!.dx / size.width;
         final startY = _panStartPosition!.dy / size.height;
-        final endX = endPosition.dx / size.width;
-        final endY = endPosition.dy / size.height;
+        final endX = _panCurrentPosition!.dx / size.width;
+        final endY = _panCurrentPosition!.dy / size.height;
         
-        print('[FamilyGuard] Sending swipe from ($startX, $startY) to ($endX, $endY)');
-        _webRTC!.sendControlCommand('swipe', {
-          'startX': startX.clamp(0.0, 1.0),
-          'startY': startY.clamp(0.0, 1.0),
-          'endX': endX.clamp(0.0, 1.0),
-          'endY': endY.clamp(0.0, 1.0),
-          'duration': duration.clamp(100, 1000),
-        });
+        // Only send swipe if there's meaningful movement
+        final distance = (_panCurrentPosition! - _panStartPosition!).distance;
+        if (distance > 10) {  // Minimum swipe distance threshold
+          print('[FamilyGuard] Sending swipe from ($startX, $startY) to ($endX, $endY), distance: $distance');
+          _webRTC!.sendControlCommand('swipe', {
+            'startX': startX.clamp(0.0, 1.0),
+            'startY': startY.clamp(0.0, 1.0),
+            'endX': endX.clamp(0.0, 1.0),
+            'endY': endY.clamp(0.0, 1.0),
+            'duration': duration.clamp(50, 800),  // Faster response
+          });
+        }
       }
     }
     _panStartPosition = null;
+    _panCurrentPosition = null;
     _panStartTime = null;
-  }
-
-  void _onPanUpdate(DragUpdateDetails details) {
-    // Track the current position for potential use
   }
 
   void _sendBack() {
@@ -489,88 +494,100 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
             return Scaffold(
               backgroundColor: Colors.black,
               body: SafeArea(
-                child: Stack(
+                child: Column(
                   children: [
-                    Positioned.fill(
-                      child: hasRemote
-                          ? RTCVideoView(
-                              _remoteRenderer,
-                              objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
-                            )
-                          : Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const CircularProgressIndicator(color: Colors.white),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    _rtcStatusText,
-                                    style: const TextStyle(color: Colors.white),
-                                  ),
-                                ],
+                    // Video area - takes most of the space but leaves room for controls
+                    Expanded(
+                      child: Container(
+                        key: _videoContainerKey,
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: hasRemote
+                                  ? RTCVideoView(
+                                      _remoteRenderer,
+                                      objectFit: RTCVideoViewObjectFit.RTCVideoViewObjectFitContain,
+                                    )
+                                  : Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const CircularProgressIndicator(color: Colors.white),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            _rtcStatusText,
+                                            style: const TextStyle(color: Colors.white),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                            ),
+                            
+                            // Gesture area for virtual clicks and swipes
+                            if (hasRemote)
+                              Positioned.fill(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.translucent,
+                                  onTapUp: (details) => _sendClick(details),
+                                  onPanStart: _onPanStart,
+                                  onPanUpdate: _onPanUpdate,
+                                  onPanEnd: _onPanEnd,
+                                ),
+                              ),
+
+                            // Status indicator at top left
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      hasRemote ? Icons.sensors : Icons.sensors_off,
+                                      color: hasRemote ? Colors.greenAccent : Colors.white,
+                                      size: 16,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _rtcStatusText,
+                                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                    ),
-                    
-                    // Gesture area for virtual clicks and swipes
-                    if (hasRemote)
-                      Positioned.fill(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onTapUp: (details) => _sendClick(details),
-                          onPanStart: _onPanStart,
-                          onPanUpdate: _onPanUpdate,
-                          onPanEnd: _onPanEnd,
-                        ),
-                      ),
-
-                    Positioned(
-                      top: 16,
-                      left: 16,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.sensors, color: Colors.white, size: 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              _rtcStatusText,
-                              style: const TextStyle(color: Colors.white),
-                            ),
                           ],
                         ),
                       ),
                     ),
-
-                    Positioned(
-                      top: 16,
-                      right: 16,
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                        onPressed: () => _stopRemoteControl(closeDialog: true),
-                      ),
-                    ),
                     
-                    // Navigation control buttons at bottom
-                    if (hasRemote)
-                      Positioned(
-                        bottom: 24,
-                        left: 0,
-                        right: 0,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _buildControlButton(Icons.arrow_back, '返回', _sendBack),
-                            _buildControlButton(Icons.home, '主页', _sendHome),
-                            _buildControlButton(Icons.view_carousel, '最近', _sendRecents),
-                          ],
+                    // Bottom control bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[900],
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
                         ),
                       ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildNavButton(Icons.arrow_back_ios_rounded, '返回', _sendBack),
+                          _buildNavButton(Icons.circle_outlined, '主页', _sendHome),
+                          _buildNavButton(Icons.crop_square_rounded, '最近', _sendRecents),
+                          _buildNavButton(Icons.close, '退出', () => _stopRemoteControl(closeDialog: true), isExit: true),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -586,6 +603,33 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
 
   void _bumpAssistUi() {
     _assistUiVersion.value++;
+  }
+
+  Widget _buildNavButton(IconData icon, String label, VoidCallback onPressed, {bool isExit = false}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isExit ? Colors.red.withOpacity(0.2) : Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isExit ? Colors.redAccent : Colors.white, size: 22),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: isExit ? Colors.redAccent : Colors.white70,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildControlButton(IconData icon, String label, VoidCallback onPressed) {
