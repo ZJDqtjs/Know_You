@@ -5,6 +5,8 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <application
         android:label="know_you"
@@ -32,6 +34,33 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        
+        <!-- Foreground service for screen capture on Android 10+ -->
+        <service
+            android:name="com.cloudwebrtc.webrtc.FlutterWebRTCForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+        
+        <!-- Our custom foreground service for screen capture -->
+        <service
+            android:name=".ScreenCaptureForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection" />
+        
+        <!-- Accessibility service for remote control -->
+        <service
+            android:name=".RemoteControlAccessibilityService"
+            android:exported="false"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+            
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

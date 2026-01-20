@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
@@ -207,9 +208,8 @@ class WebRTCService {
              print('[WebRTC] Received offer from initiator');
              // Target creates peer connection when receiving offer
              if (!_isInitiator) {
-               if (_peerConnection == null) {
-                 await _createPeerConnection();
-               }
+               // Don't create peer connection here - let _handleOffer do it
+               // so that screen share can be started first
                await _handleOffer(payload);
              }
              break;
@@ -311,10 +311,19 @@ class WebRTCService {
     }
   }
 
+  // Flag to track if foreground service is running
+  static bool _foregroundServiceStarted = false;
+  static const _foregroundServiceChannel = MethodChannel('com.example.know_you/foreground_service');
+  
   Future<void> startScreenShare() async {
     if (_isInitiator) return;
     
     try {
+      // On Android 10+, we need to start a foreground service before screen capture
+      if (Platform.isAndroid) {
+        await _startForegroundService();
+      }
+      
       // Prefer display media for screen sharing; fallback to camera if unavailable
       try {
         _localStream = await navigator.mediaDevices.getDisplayMedia({
@@ -342,14 +351,42 @@ class WebRTCService {
         });
       }
       
-      _localStream!.getTracks().forEach((track) {
-        _peerConnection?.addTrack(track, _localStream!);
-      });
+      // Note: tracks will be added to peer connection in _createPeerConnection()
+      // when _localStream is available
       
       print('[WebRTC] Screen share started with ${_localStream!.getTracks().length} tracks');
     } catch (e) {
       print('[WebRTC] Start screen share error: $e');
+      // Stop foreground service on error
+      if (Platform.isAndroid) {
+        await _stopForegroundService();
+      }
       rethrow;
+    }
+  }
+  
+  Future<void> _startForegroundService() async {
+    if (_foregroundServiceStarted) return;
+    
+    try {
+      await _foregroundServiceChannel.invokeMethod('startForegroundService');
+      _foregroundServiceStarted = true;
+      print('[WebRTC] Foreground service started');
+    } catch (e) {
+      print('[WebRTC] Failed to start foreground service: $e');
+      // Continue anyway - might work on older Android versions
+    }
+  }
+  
+  Future<void> _stopForegroundService() async {
+    if (!_foregroundServiceStarted) return;
+    
+    try {
+      await _foregroundServiceChannel.invokeMethod('stopForegroundService');
+      _foregroundServiceStarted = false;
+      print('[WebRTC] Foreground service stopped');
+    } catch (e) {
+      print('[WebRTC] Failed to stop foreground service: $e');
     }
   }
 
@@ -471,20 +508,51 @@ class WebRTCService {
   void _closeInternal() {
     print('[WebRTC] Closing internal resources');
     _stopHeartbeat();
-    _channel?.sink.close();
+    
+    // Close WebSocket
+    try {
+      _channel?.sink.close();
+    } catch (e) {
+      print('[WebRTC] Error closing WebSocket: $e');
+    }
     _channel = null;
     
-    _localStream?.dispose();
+    // Dispose local stream
+    try {
+      _localStream?.getTracks().forEach((track) {
+        track.stop();
+      });
+      _localStream?.dispose();
+    } catch (e) {
+      print('[WebRTC] Error disposing local stream: $e');
+    }
     _localStream = null;
     
-    _peerConnection?.close();
+    // Close peer connection
+    try {
+      _peerConnection?.close();
+    } catch (e) {
+      print('[WebRTC] Error closing peer connection: $e');
+    }
     _peerConnection = null;
     
+    // Stop foreground service on Android
+    if (Platform.isAndroid) {
+      _stopForegroundService();
+    }
+    
+    // Reset all state
     _sessionId = null;
     _readySent = false;
-    // Don't reset _isInitiator here - it should be set on next init
     _remoteStream = null;
     
     _setState(WebRTCConnectionState.closed);
+  }
+  
+  /// Reset the service to idle state for reuse
+  void reset() {
+    print('[WebRTC] Resetting service to idle state');
+    _closeInternal();
+    _state = WebRTCConnectionState.idle;
   }
 }

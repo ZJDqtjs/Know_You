@@ -293,8 +293,13 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   }
 
   Future<void> _startRemoteAssist(int targetUserId) async {
-    // Reset state for new session
-    _webRTC?.close();
+    // Properly clean up any existing connection first
+    if (_webRTC != null) {
+      _webRTC!.reset();
+      _webRTC = null;
+    }
+    
+    // Create new WebRTC service instance
     _webRTC = WebRTCService();
     _rtcState = WebRTCConnectionState.connecting;
     _rtcStatusText = '等待家人接受...';
@@ -372,11 +377,13 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   }
 
   void _stopRemoteControl({bool closeDialog = false}) {
-    _webRTC?.close();
-    _webRTC = null;
+    if (_webRTC != null) {
+      _webRTC!.reset();
+      _webRTC = null;
+    }
     _remoteRenderer.srcObject = null;
     _inCall = false;
-    _rtcState = WebRTCConnectionState.closed;
+    _rtcState = WebRTCConnectionState.idle;  // Reset to idle instead of closed
     _bumpAssistUi();
 
     if (closeDialog && _assistDialogOpen && Navigator.of(context, rootNavigator: true).canPop()) {
@@ -384,14 +391,85 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
     }
   }
 
-  void _sendMouseCommand(String type, TapUpDetails details) {
-    if (_webRTC != null) {
-      // Calculate normalized coordinates relative to screen
-      final size = MediaQuery.of(context).size;
-      final x = details.globalPosition.dx / size.width;
-      final y = details.globalPosition.dy / size.height;
+  // Gesture tracking for swipe detection
+  Offset? _panStartPosition;
+  DateTime? _panStartTime;
 
-      _webRTC!.sendControlCommand('virtualClick', {'x': x, 'y': y});
+  void _sendClick(TapUpDetails details) {
+    if (_webRTC != null) {
+      // Get the RenderBox of the video view to calculate proper coordinates
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+      if (box != null) {
+        final size = box.size;
+        final x = details.localPosition.dx / size.width;
+        final y = details.localPosition.dy / size.height;
+        
+        print('[FamilyGuard] Sending click at ($x, $y)');
+        _webRTC!.sendControlCommand('click', {'x': x, 'y': y});
+      }
+    }
+  }
+
+  void _onPanStart(DragStartDetails details) {
+    _panStartPosition = details.localPosition;
+    _panStartTime = DateTime.now();
+  }
+
+  void _onPanEnd(DragEndDetails details) {
+    if (_webRTC != null && _panStartPosition != null && _panStartTime != null) {
+      final RenderBox? box = context.findRenderObject() as RenderBox?;
+      if (box != null) {
+        final size = box.size;
+        final duration = DateTime.now().difference(_panStartTime!).inMilliseconds;
+        
+        // Get current position from velocity
+        final velocity = details.velocity.pixelsPerSecond;
+        final endPosition = _panStartPosition! + Offset(
+          velocity.dx * 0.1, // Estimate end position from velocity
+          velocity.dy * 0.1,
+        );
+        
+        final startX = _panStartPosition!.dx / size.width;
+        final startY = _panStartPosition!.dy / size.height;
+        final endX = endPosition.dx / size.width;
+        final endY = endPosition.dy / size.height;
+        
+        print('[FamilyGuard] Sending swipe from ($startX, $startY) to ($endX, $endY)');
+        _webRTC!.sendControlCommand('swipe', {
+          'startX': startX.clamp(0.0, 1.0),
+          'startY': startY.clamp(0.0, 1.0),
+          'endX': endX.clamp(0.0, 1.0),
+          'endY': endY.clamp(0.0, 1.0),
+          'duration': duration.clamp(100, 1000),
+        });
+      }
+    }
+    _panStartPosition = null;
+    _panStartTime = null;
+  }
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    // Track the current position for potential use
+  }
+
+  void _sendBack() {
+    if (_webRTC != null) {
+      print('[FamilyGuard] Sending back command');
+      _webRTC!.sendControlCommand('back', {});
+    }
+  }
+
+  void _sendHome() {
+    if (_webRTC != null) {
+      print('[FamilyGuard] Sending home command');
+      _webRTC!.sendControlCommand('home', {});
+    }
+  }
+
+  void _sendRecents() {
+    if (_webRTC != null) {
+      print('[FamilyGuard] Sending recents command');
+      _webRTC!.sendControlCommand('recents', {});
     }
   }
 
@@ -434,12 +512,15 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                             ),
                     ),
                     
-                    // Gesture area for virtual clicks
+                    // Gesture area for virtual clicks and swipes
                     if (hasRemote)
                       Positioned.fill(
                         child: GestureDetector(
                           behavior: HitTestBehavior.translucent,
-                          onTapUp: (details) => _sendMouseCommand('click', details),
+                          onTapUp: (details) => _sendClick(details),
+                          onPanStart: _onPanStart,
+                          onPanUpdate: _onPanUpdate,
+                          onPanEnd: _onPanEnd,
                         ),
                       ),
 
@@ -474,6 +555,22 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                         onPressed: () => _stopRemoteControl(closeDialog: true),
                       ),
                     ),
+                    
+                    // Navigation control buttons at bottom
+                    if (hasRemote)
+                      Positioned(
+                        bottom: 24,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildControlButton(Icons.arrow_back, '返回', _sendBack),
+                            _buildControlButton(Icons.home, '主页', _sendHome),
+                            _buildControlButton(Icons.view_carousel, '最近', _sendRecents),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -489,5 +586,29 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
 
   void _bumpAssistUi() {
     _assistUiVersion.value++;
+  }
+
+  Widget _buildControlButton(IconData icon, String label, VoidCallback onPressed) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

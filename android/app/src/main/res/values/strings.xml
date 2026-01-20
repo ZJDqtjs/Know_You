@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Know You</string>
+    <string name="accessibility_service_description">此服务用于远程控制功能，允许远程协助者在您的设备上执行点击和滑动操作。请仅在需要远程协助时启用此服务。</string>
+</resources>
