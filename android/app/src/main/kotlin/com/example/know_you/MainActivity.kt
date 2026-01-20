@@ -11,9 +11,80 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private val ACCESSIBILITY_CHANNEL = "com.example.know_you/accessibility"
     private val FOREGROUND_SERVICE_CHANNEL = "com.example.know_you/foreground_service"
+    private val FLOATING_BALL_CHANNEL = "com.example.know_you/floating_ball"
+    
+    private val OVERLAY_PERMISSION_REQUEST_CODE = 1001
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        // Floating ball channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FLOATING_BALL_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startFloatingBall" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        if (!Settings.canDrawOverlays(this)) {
+                            // 请求悬浮窗权限
+                            try {
+                                val intent = Intent(
+                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                    android.net.Uri.parse("package:$packageName")
+                                )
+                                startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+                                result.error("PERMISSION_REQUIRED", "Overlay permission is required", null)
+                            } catch (e: Exception) {
+                                result.error("PERMISSION_ERROR", "Failed to request permission: ${e.message}", null)
+                            }
+                            return@setMethodCallHandler
+                        }
+                    }
+                    
+                    try {
+                        val intent = Intent(this, FloatingBallService::class.java)
+                        // 不使用startForegroundService，因为悬浮球不需要前台服务
+                        startService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("START_FAILED", "Failed to start floating ball: ${e.message}", null)
+                    }
+                }
+                "stopFloatingBall" -> {
+                    try {
+                        val intent = Intent(this, FloatingBallService::class.java)
+                        stopService(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("STOP_FAILED", e.message, null)
+                    }
+                }
+                "getTextAtPosition" -> {
+                    val x = call.argument<Double>("x") ?: 0.0
+                    val y = call.argument<Double>("y") ?: 0.0
+                    val service = RemoteControlAccessibilityService.instance
+                    if (service != null) {
+                        val text = service.getTextAtPosition(x, y)
+                        result.success(text)
+                    } else {
+                        result.error("SERVICE_NOT_ENABLED", "Accessibility service is not enabled", null)
+                    }
+                }
+                "hasOverlayPermission" -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        result.success(Settings.canDrawOverlays(this))
+                    } else {
+                        result.success(true)
+                    }
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+        
+        // Set channel for FloatingBallService
+        FloatingBallService.setMethodChannel(
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, FLOATING_BALL_CHANNEL)
+        )
 
         // Accessibility service channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ACCESSIBILITY_CHANNEL).setMethodCallHandler { call, result ->

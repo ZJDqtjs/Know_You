@@ -3,16 +3,27 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'common/auth_provider.dart';
 import 'common/notification_service.dart';
+import 'common/floating_ball_service.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/main_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  
+  // 初始化悬浮球服务（不等待TTS完全初始化，让它在后台完成）
+  final floatingBallService = FloatingBallService();
+  // 延迟初始化TTS，让应用先启动
+  Future.delayed(const Duration(milliseconds: 500), () {
+    floatingBallService.init();
+  });
+  
+  runApp(MyApp(floatingBallService: floatingBallService));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final FloatingBallService floatingBallService;
+  
+  const MyApp({super.key, required this.floatingBallService});
 
   @override
   Widget build(BuildContext context) {
@@ -20,6 +31,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..checkLogin()),
         ChangeNotifierProvider(create: (_) => NotificationService()),
+        ChangeNotifierProvider.value(value: floatingBallService),
       ],
       child: ScreenUtilInit(
         designSize: const Size(375, 812), // Assuming standard iPhone X design size from UniApp default
@@ -27,7 +39,7 @@ class MyApp extends StatelessWidget {
         splitScreenMode: true,
         builder: (context, child) {
           return MaterialApp(
-            title: '知颐111111',
+            title: '知颐',
             navigatorKey: NotificationService.navigatorKey,
             theme: ThemeData(
               primarySwatch: Colors.green,
