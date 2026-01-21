@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:io';
 
 class ContactDetailPage extends StatelessWidget {
   final Map<String, dynamic> contact;
@@ -10,6 +11,15 @@ class ContactDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider avatarImage;
+    if (contact['isAsset'] == true) {
+      avatarImage = AssetImage(contact['avatar']);
+    } else if (contact['avatar'] != null && File(contact['avatar']).existsSync()) {
+      avatarImage = FileImage(File(contact['avatar']));
+    } else {
+       avatarImage = const AssetImage('assets/images/avatar.svg'); // Fallback
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('联系人详情')),
       body: Center(
@@ -33,18 +43,15 @@ class ContactDetailPage extends StatelessWidget {
               child: Column(
                 children: [
                   Container(
+                    width: 200.w,
+                    height: 200.w,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: const Color(0xFFE8F5E9), width: 8.w),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        contact['avatar'],
-                        width: 200.w,
-                        height: 200.w,
+                      image: DecorationImage(
+                        image: avatarImage,
                         fit: BoxFit.cover,
-                        errorBuilder: (c,e,s) => Image.asset('assets/images/avatar.svg', width: 200.w, height: 200.w),
-                      ),
+                      )
                     ),
                   ),
                   SizedBox(height: 24.h),

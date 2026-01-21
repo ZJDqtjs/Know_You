@@ -59,6 +59,8 @@ dependencies:
   
   # Speech Recognition
   speech_to_text: ^7.0.0
+  flutter_contacts: ^1.1.9+2
+  installed_apps: ^2.1.0
 
 dev_dependencies:
   flutter_test:
@@ -84,6 +86,7 @@ flutter:
 
   assets:
     - assets/
+    - assets/config/
     - assets/images/
     - assets/debug/
 

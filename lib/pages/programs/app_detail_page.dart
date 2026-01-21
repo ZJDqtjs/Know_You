@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:fluttertoast/fluttertoast.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'dart:io';
+import 'package:installed_apps/installed_apps.dart';
 
 class AppDetailPage extends StatelessWidget {
   final Map<String, dynamic> app;
@@ -11,6 +9,26 @@ class AppDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Widget iconWidget;
+    if (app['iconData'] != null) {
+      iconWidget = Image.memory(
+        app['iconData'],
+        width: 200.w,
+        height: 200.w,
+        fit: BoxFit.cover,
+      );
+    } else if (app['icon'] != null) {
+      iconWidget = Image.asset(
+        app['icon'],
+        width: 200.w,
+        height: 200.w,
+        fit: BoxFit.cover,
+        errorBuilder: (c,e,s) => Image.asset('assets/images/avatar.svg', width: 200.w, height: 200.w),
+      );
+    } else {
+       iconWidget = Icon(Icons.android, size: 200.w, color: Colors.green);
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('应用详情')),
       body: Center(
@@ -35,13 +53,7 @@ class AppDetailPage extends StatelessWidget {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(40.r),
-                    child: Image.asset(
-                      app['icon'],
-                      width: 200.w,
-                      height: 200.w,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c,e,s) => Image.asset('assets/images/avatar.svg', width: 200.w, height: 200.w),
-                    ),
+                    child: iconWidget,
                   ),
                   SizedBox(height: 24.h),
                   Text(
@@ -81,34 +93,10 @@ class AppDetailPage extends StatelessWidget {
   }
 
   Future<void> _launchApp(String packageName) async {
-    // Note: Launching apps by package name is tricky in standard Flutter without specific plugins like `external_app_launcher` or `device_apps`.
-    // `url_launcher` supports some schemes.
-    // For WeChat: weixin://
-    // For Douyin: snssdk1128://
-    
-    String? scheme;
-    if (packageName == 'com.tencent.mm') {
-      scheme = 'weixin://';
-    } else if (packageName == 'com.ss.android.ugc.aweme') {
-      scheme = 'snssdk1128://';
-    }
-
-    if (scheme != null) {
-      final Uri launchUri = Uri.parse(scheme);
-      try {
-        if (await canLaunchUrl(launchUri)) {
-          await launchUrl(launchUri);
-        } else {
-          Fluttertoast.showToast(msg: '无法打开应用，请确认已安装');
-        }
-      } catch (e) {
-        Fluttertoast.showToast(msg: '打开失败: $e');
-      }
-    } else {
-      // For general Android apps, we would need `external_app_launcher` plugin or `android_intent_plus`.
-      // Since I can't add arbitrary plugins without user approval usually, but `url_launcher` is already added.
-      // I'll stick to schemes for known apps as per migration.
-      Fluttertoast.showToast(msg: '暂不支持该应用跳转');
+    try {
+      await InstalledApps.startApp(packageName);
+    } catch (e) {
+      debugPrint('Error launching app: $e');
     }
   }
 }

@@ -6,6 +6,7 @@ import '../common/shizuku_service.dart';
 import '../widgets/voice_assistant_overlay.dart';
 import 'index/index_page.dart';
 import 'familyGuard/family_guard_page.dart';
+import 'community/community_page.dart';
 import 'mine/mine_page.dart';
 
 class MainPage extends StatefulWidget {
@@ -17,8 +18,10 @@ class MainPage extends StatefulWidget {
 
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
+  final PageController _pageController = PageController();
   final List<Widget> _pages = const [
     IndexPage(),
+    CommunityPage(),
     FamilyGuardPage(),
     MinePage(),
   ];
@@ -43,6 +46,7 @@ class _MainPageState extends State<MainPage> {
   
   @override
   void dispose() {
+    _pageController.dispose();
     super.dispose();
   }
   
@@ -151,18 +155,32 @@ class _MainPageState extends State<MainPage> {
       child: ReadableTextWrapper(
         service: floatingService,
         child: Scaffold(
-          body: IndexedStack(
-            index: _currentIndex,
+          body: PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            physics: const BouncingScrollPhysics(),
             children: _pages,
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
+            onTap: (index) {
+              setState(() => _currentIndex = index);
+              _pageController.jumpToPage(index);
+            },
             items: [
               BottomNavigationBarItem(
                 icon: Image.asset('assets/images/home.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home)),
                 activeIcon: Image.asset('assets/images/home-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home, color: Colors.green)),
                 label: '主页',
+              ),
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/images/community.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.groups)),
+                activeIcon: Image.asset('assets/images/community-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.groups, color: Colors.green)),
+                label: '社区生活',
               ),
               BottomNavigationBarItem(
                 icon: Image.asset('assets/images/family.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite)),
