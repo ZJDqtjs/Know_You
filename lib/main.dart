@@ -62,7 +62,7 @@ class MyApp extends StatelessWidget {
                 backgroundColor: Color.fromARGB(255, 200, 236, 203),
                 selectedItemColor: Color(0xFF4CAF50),
                 unselectedItemColor: Color(0xFF666666),
-                type: BottomNavigationBarType.fixed,
+                
               ),
             ),
             home: const AuthGuard(),

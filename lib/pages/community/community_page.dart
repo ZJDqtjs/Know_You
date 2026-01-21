@@ -46,6 +46,7 @@ class _CommunityPageState extends State<CommunityPage> with SingleTickerProvider
       ),
       body: TabBarView(
         controller: _tabController,
+        physics: const NeverScrollableScrollPhysics(),
         children: const [
           TreeHolePage(),
           MallPage(),

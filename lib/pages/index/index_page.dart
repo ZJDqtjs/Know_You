@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../common/auth_provider.dart';
+import '../../common/programs_cache.dart';
 import '../../widgets/common_card.dart';
 import '../phonebook/phonebook_page.dart';
 import '../programs/programs_page.dart';
@@ -29,6 +30,9 @@ class _IndexPageState extends State<IndexPage> {
   void initState() {
     super.initState();
     _startBannerTimer();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ProgramsCache.preload();
+    });
   }
 
   @override

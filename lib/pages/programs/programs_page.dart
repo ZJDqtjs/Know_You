@@ -4,7 +4,7 @@ import 'package:installed_apps/app_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import '../../common/programs_cache.dart';
 
 class ProgramsPage extends StatefulWidget {
   const ProgramsPage({super.key});
@@ -16,56 +16,31 @@ class ProgramsPage extends StatefulWidget {
 class _ProgramsPageState extends State<ProgramsPage> {
   bool _isLoading = true;
   
-  // Default configured apps
-  final List<String> _savedPackageNames = [];
   final List<AppInfo> _displayedApps = [];
 
   @override
   void initState() {
     super.initState();
-    _loadSavedApps();
+    if (ProgramsCache.hasCache) {
+      _displayedApps.addAll(ProgramsCache.cachedApps);
+      _isLoading = false;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadApps();
+    });
   }
 
-  Future<void> _loadSavedApps() async {
-    final prefs = await SharedPreferences.getInstance();
-    final savedList = prefs.getStringList('saved_app_packages');
-    
-    if (savedList != null) {
-      _savedPackageNames.addAll(savedList);
-    } else {
-      // Add defaults if first run
-      _savedPackageNames.addAll([
-        'com.tencent.mm', // WeChat
-        'com.ss.android.ugc.aweme', // Douyin
-      ]);
-      await prefs.setStringList('saved_app_packages', _savedPackageNames);
+  Future<void> _loadApps({bool forceRefresh = false}) async {
+    if (mounted) {
+      setState(() {
+        if (_displayedApps.isEmpty) {
+          _isLoading = true;
+        }
+      });
     }
 
-    await _refreshDisplayedApps();
-  }
-
-  Future<void> _refreshDisplayedApps() async {
-    setState(() {
-      _isLoading = true;
-    });
-
     try {
-      // InstalledApps.getInstalledApps args are named arguments in 2.1.0 version
-      final allApps = await InstalledApps.getInstalledApps(excludeSystemApps: true, withIcon: true);
-      
-      List<AppInfo> loadedApps = [];
-      for (var savedPkg in _savedPackageNames) {
-        try {
-          // Find in list
-          final match = allApps.where((a) => a.packageName == savedPkg).firstOrNull;
-          if (match != null) {
-            loadedApps.add(match);
-          }
-        } catch (e) {
-          debugPrint('Error finding app $savedPkg: $e');
-        }
-      }
-      
+      final loadedApps = await ProgramsCache.getApps(forceRefresh: forceRefresh);
       if (mounted) {
         setState(() {
           _displayedApps.clear();
@@ -83,70 +58,110 @@ class _ProgramsPageState extends State<ProgramsPage> {
   }
 
   Future<void> _showAddAppDialog() async {
-    // Show loading indictor first while fetching all apps
-    showDialog(context: context,  barrierDismissible: false, builder: (c) => const Center(child: CircularProgressIndicator()));
-    
-    try {
-      final allApps = await InstalledApps.getInstalledApps(excludeSystemApps: true, withIcon: true);
-      
-      if (mounted) Navigator.pop(context); // Close loading
+    final searchController = TextEditingController();
+    final availableAppsFuture = _loadAvailableApps();
 
-      if (!mounted) return;
-
-      // Filter out already added apps
-      final availableApps = allApps.where((app) => !_savedPackageNames.contains(app.packageName)).toList();
-      
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
-        builder: (context) {
-          return Container(
-            height: 0.8.sh,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
-            ),
-            child: Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Text('添加应用', style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold)),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: availableApps.length,
-                    itemBuilder: (context, index) {
-                      final app = availableApps[index];
-                      return ListTile(
-                        leading: app.icon != null ? Image.memory(app.icon!, width: 80.w, height: 80.w) : Icon(Icons.android, size: 80.w),
-                        title: Text(app.name ?? '', style: TextStyle(fontSize: 28.sp)),
-                        onTap: () async {
-                          Navigator.pop(context);
-                          await _addApp(app.packageName);
-                        },
-                      );
-                    },
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              height: 0.85.sh,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20.r)),
+              ),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 16.w, 16.w, 8.w),
+                    child: Text('添加应用', style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold)),
                   ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      if (mounted) Navigator.pop(context); // Close loading if error
-      Fluttertoast.showToast(msg: "获取应用列表失败");
-    }
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(16.w, 0, 16.w, 12.w),
+                    child: TextField(
+                      controller: searchController,
+                      onChanged: (_) => setSheetState(() {}),
+                      decoration: InputDecoration(
+                        hintText: '搜索应用名称',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12.r)),
+                        contentPadding: EdgeInsets.symmetric(vertical: 10.h),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: FutureBuilder<List<AppInfo>>(
+                      future: availableAppsFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState != ConnectionState.done) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return const Center(child: Text('加载失败，请稍后重试'));
+                        }
+                        final allApps = snapshot.data ?? const [];
+                        final query = searchController.text.trim().toLowerCase();
+                        final filteredApps = query.isEmpty
+                            ? allApps
+                            : allApps.where((app) {
+                                final name = (app.name ?? '').toLowerCase();
+                                return name.contains(query);
+                              }).toList();
+
+                        if (filteredApps.isEmpty) {
+                          return const Center(child: Text('未找到匹配应用'));
+                        }
+
+                        return ListView.builder(
+                          itemCount: filteredApps.length,
+                          itemBuilder: (context, index) {
+                            final app = filteredApps[index];
+                            return ListTile(
+                              leading: app.icon != null
+                                  ? Image.memory(app.icon!, width: 80.w, height: 80.w)
+                                  : const Icon(Icons.apps),
+                              title: Text(app.name ?? '', style: TextStyle(fontSize: 28.sp)),
+                              onTap: () async {
+                                Navigator.pop(context);
+                                await _addApp(app.packageName);
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<AppInfo>> _loadAvailableApps() async {
+    final allApps = await ProgramsCache.getAllAppsWithIcon();
+    final savedPackages = await ProgramsCache.loadSavedPackages();
+    final availableApps = allApps.where((app) => !savedPackages.contains(app.packageName)).toList();
+    availableApps.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
+    return availableApps;
   }
 
   Future<void> _addApp(String? packageName) async {
     if (packageName == null) return;
-    if (!_savedPackageNames.contains(packageName)) {
-      _savedPackageNames.add(packageName);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('saved_app_packages', _savedPackageNames);
-      await _refreshDisplayedApps();
+    await ProgramsCache.addPackage(packageName);
+    if (mounted) {
+      setState(() {
+        _displayedApps
+          ..clear()
+          ..addAll(ProgramsCache.cachedApps);
+        _isLoading = false;
+      });
     }
   }
 
@@ -293,12 +308,13 @@ class _ProgramsPageState extends State<ProgramsPage> {
   }
 
   Future<void> _removeApp(String packageName) async {
-    if (_savedPackageNames.contains(packageName)) {
-      _savedPackageNames.remove(packageName);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('saved_app_packages', _savedPackageNames);
-      await _refreshDisplayedApps();
-      Fluttertoast.showToast(msg: "应用已移除");
+    await ProgramsCache.removePackage(packageName);
+    if (mounted) {
+      setState(() {
+        _displayedApps.removeWhere((app) => app.packageName == packageName);
+        _isLoading = false;
+      });
     }
+    Fluttertoast.showToast(msg: "应用已移除");
   }
 }

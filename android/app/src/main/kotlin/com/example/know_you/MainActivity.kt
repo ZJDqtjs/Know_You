@@ -24,6 +24,17 @@ class MainActivity : FlutterActivity() {
     private var shizukuMethodChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (Build.BRAND.equals("Xiaomi", ignoreCase = true)) {
+            try {
+                val miuiThemeClass = Class.forName("android.view.MiuiThemeManager")
+                val disableTheme = miuiThemeClass.getMethod("disableCustomTheme")
+                disableTheme.invoke(null)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+        System.setProperty("android.graphics.Bitmap.deferRecycling", "false")
+
         super.onCreate(savedInstanceState)
         shizukuHelper = ShizukuHelper(this)
         wirelessAdbHelper = WirelessAdbHelper(this)
