@@ -6,7 +6,9 @@ import 'package:flutter/services.dart';
 import '../../common/api.dart';
 import '../../common/auth_provider.dart';
 import '../../common/shizuku_service.dart';
+import '../../common/voice_assistant_service.dart';
 import '../../widgets/common_card.dart';
+import '../voice_assistant_settings_page.dart';
 import 'edit_profile_page.dart';
 import 'accessibility_keep_alive_page.dart';
 
@@ -73,6 +75,47 @@ class _MinePageState extends State<MinePage> {
     }
   }
 
+  String _getUserName(dynamic user) {
+    return user?['nickname'] ?? user?['username'] ?? '用户';
+  }
+
+  Future<void> _confirmUnlink(dynamic binding, String userName) async {
+    final bindingId = binding is Map
+        ? (binding['id'] ?? binding['bindingId'] ?? binding['binding_id'])
+        : binding;
+    if (bindingId == null) {
+      Fluttertoast.showToast(msg: '未找到绑定信息');
+      return;
+    }
+    final shouldUnlink = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('解除绑定确认'),
+        content: Text('确定要与“$userName”解除绑定吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('解除', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldUnlink != true) return;
+    try {
+      await Api.bindings.unlink(bindingId);
+      await _fetchBindings();
+      Fluttertoast.showToast(msg: '已解除绑定');
+    } catch (e) {
+      Fluttertoast.showToast(msg: '解除绑定失败');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = Provider.of<AuthProvider>(context);
@@ -81,7 +124,7 @@ class _MinePageState extends State<MinePage> {
     final avatarUrl = user?['avatar'];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
+      appBar: AppBar(title: const Text('我的'),centerTitle: true),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -110,7 +153,7 @@ class _MinePageState extends State<MinePage> {
               child: Column(
                 children: [
                   const Icon(Icons.monitor_heart, color: Colors.green, size: 40),
-                  SizedBox(height: 10.h),
+                  SizedBox(height: 2.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -118,7 +161,7 @@ class _MinePageState extends State<MinePage> {
                       Text(_bindingCode, style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, letterSpacing: 2)),
                     ],
                   ),
-                  SizedBox(height: 20.h),
+                  SizedBox(height: 10.h),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -150,13 +193,21 @@ class _MinePageState extends State<MinePage> {
                   SizedBox(height: 10.h),
                   _myInitiatorBindings.isEmpty
                       ? Text('暂无', style: TextStyle(color: Colors.grey, fontSize: 14.sp))
-                      : Wrap(
-                          spacing: 10.w,
-                          runSpacing: 10.h,
-                          children: _myInitiatorBindings.map((binding) {
-                            final user = binding['targetUser'] ?? binding['targetUserInfo'];
-                            return _buildAvatarItem(user);
-                          }).toList(),
+                      : SizedBox(
+                          height: 70.h,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _myInitiatorBindings.length,
+                            separatorBuilder: (context, index) => SizedBox(width: 12.w),
+                            itemBuilder: (context, index) {
+                              final binding = _myInitiatorBindings[index];
+                              final user = binding['targetUser'] ?? binding['targetUserInfo'];
+                              return _buildAvatarItem(
+                                user,
+                                onTap: () => _confirmUnlink(binding, _getUserName(user)),
+                              );
+                            },
+                          ),
                         ),
                 ],
               ),
@@ -170,13 +221,21 @@ class _MinePageState extends State<MinePage> {
                   SizedBox(height: 10.h),
                   _myTargetBindings.isEmpty
                       ? Text('暂无', style: TextStyle(color: Colors.grey, fontSize: 14.sp))
-                      : Wrap(
-                          spacing: 10.w,
-                          runSpacing: 10.h,
-                          children: _myTargetBindings.map((binding) {
-                            final user = binding['initiatorUser'] ?? binding['initiatorUserInfo'];
-                            return _buildAvatarItem(user);
-                          }).toList(),
+                      : SizedBox(
+                          height: 70.h,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _myTargetBindings.length,
+                            separatorBuilder: (context, index) => SizedBox(width: 12.w),
+                            itemBuilder: (context, index) {
+                              final binding = _myTargetBindings[index];
+                              final user = binding['initiatorUser'] ?? binding['initiatorUserInfo'];
+                              return _buildAvatarItem(
+                                user,
+                                onTap: () => _confirmUnlink(binding, _getUserName(user)),
+                              );
+                            },
+                          ),
                         ),
                 ],
               ),
@@ -234,6 +293,60 @@ class _MinePageState extends State<MinePage> {
                 ),
               ),
             ),
+
+            // 语音助手设置入口
+            CommonCard(
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const VoiceAssistantSettingsPage()),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.mic, color: Colors.purple),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('语音助手', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500)),
+                          Consumer<VoiceAssistantService>(
+                            builder: (context, service, _) {
+                              String statusText;
+                              Color statusColor;
+                              if (!service.speechAvailable) {
+                                statusText = '识别不可用';
+                                statusColor = Colors.redAccent;
+                              } else if (service.isEnabled) {
+                                statusText = '已启用';
+                                statusColor = Colors.green;
+                              } else {
+                                statusText = '已禁用';
+                                statusColor = Colors.orange;
+                              }
+                              return Text(
+                                statusText,
+                                style: TextStyle(fontSize: 12.sp, color: statusColor),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
             
             // Logout
             Padding(
@@ -274,29 +387,33 @@ class _MinePageState extends State<MinePage> {
     );
   }
 
-  Widget _buildAvatarItem(dynamic user) {
+  Widget _buildAvatarItem(dynamic user, {VoidCallback? onTap}) {
     if (user == null) return const SizedBox.shrink();
-    final name = user['nickname'] ?? user['username'] ?? 'User';
+    final name = _getUserName(user);
     final avatarUrl = user['avatar'];
     
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 25.w,
-          backgroundColor: const Color(0xFFE1BEE7),
-          backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-              ? NetworkImage(avatarUrl)
-              : null,
-          child: avatarUrl == null || avatarUrl.isEmpty
-              ? Text(
-                  name[0].toUpperCase(),
-                  style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
-                )
-              : null,
-        ),
-        SizedBox(height: 4.h),
-        Text(name, style: TextStyle(fontSize: 12.sp)),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 25.w,
+            backgroundColor: const Color(0xFFE1BEE7),
+            backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                ? NetworkImage(avatarUrl)
+                : null,
+            child: avatarUrl == null || avatarUrl.isEmpty
+                ? Text(
+                    name[0].toUpperCase(),
+                    style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                  )
+                : null,
+          ),
+          SizedBox(height: 4.h),
+          Text(name, style: TextStyle(fontSize: 12.sp)),
+        ],
+      ),
     );
   }
 }

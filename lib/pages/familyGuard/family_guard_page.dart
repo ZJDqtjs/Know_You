@@ -89,7 +89,7 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('亲情守护')),
+      appBar: AppBar(title: const Text('亲情守护'),centerTitle: true),
         body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -106,7 +106,7 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                             children: [
                               // Member List (Horizontal Scroll or Grid)
                               Container(
-                                height: 100.h,
+                                height: 110.h,
                                 padding: EdgeInsets.symmetric(vertical: 8.h),
                                 color: Colors.white,
                                 child: ListView.builder(
@@ -238,7 +238,7 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
               SizedBox(height: 10.h),
               _buildHealthRow(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.favorite, '血压', '收缩压: 125mmHg 舒张压: 75mmHg', const Color(0xFFEF5350)),
+              _buildHealthRow(Icons.favorite, '血压', '收缩压: 125mmHg 舒张压: 75mmHg', const Color(0xFFEF5350),multilineValue:true,),
               SizedBox(height: 10.h),
               _buildHealthRow(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
             ],
@@ -248,14 +248,23 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
     );
   }
 
-  Widget _buildHealthRow(IconData icon, String label, String value, Color iconColor) {
+  Widget _buildHealthRow(IconData icon, String label, String value, Color iconColor, {bool multilineValue = false}) {
     return Row(
       children: [
         Icon(icon, size: 24.w, color: iconColor),
         SizedBox(width: 10.w),
         Text(label, style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.w500)),
         const Spacer(),
-        Flexible(child: Text(value, style: const TextStyle(color: Colors.grey), textAlign: TextAlign.right)),
+        SizedBox(
+          width: 130.w,
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            maxLines: multilineValue ? 2 : 1,
+            overflow: multilineValue ? TextOverflow.visible : TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 14.sp, color: const Color(0xFF666666)),
+          ),
+        ),
       ],
     );
   }

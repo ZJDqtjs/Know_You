@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../common/floating_ball_service.dart';
 import '../common/shizuku_service.dart';
+import '../widgets/voice_assistant_overlay.dart';
 import 'index/index_page.dart';
 import 'familyGuard/family_guard_page.dart';
 import 'mine/mine_page.dart';
@@ -146,42 +147,44 @@ class _MainPageState extends State<MainPage> {
   Widget build(BuildContext context) {
     final floatingService = Provider.of<FloatingBallService>(context);
     
-    return ReadableTextWrapper(
-      service: floatingService,
-      child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
+    return VoiceAssistantOverlay(
+      child: ReadableTextWrapper(
+        service: floatingService,
+        child: Scaffold(
+          body: IndexedStack(
+            index: _currentIndex,
+            children: _pages,
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            items: [
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/static/images/home.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home)),
+                activeIcon: Image.asset('assets/static/images/home-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home, color: Colors.green)),
+                label: '主页',
+              ),
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/static/images/family.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite)),
+                activeIcon: Image.asset('assets/static/images/family-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite, color: Colors.green)),
+                label: '亲情守护',
+              ),
+              BottomNavigationBarItem(
+                icon: Image.asset('assets/static/images/user.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person)),
+                activeIcon: Image.asset('assets/static/images/user-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person, color: Colors.green)),
+                label: '我的',
+              ),
+            ],
+          ),
+          // 悬浮球开关按钮（当悬浮球未启用时显示）
+          floatingActionButton: !floatingService.isEnabled
+              ? FloatingActionButton.small(
+                  onPressed: () => floatingService.enable(context),
+                  backgroundColor: Colors.green,
+                  child: const Icon(Icons.record_voice_over, color: Colors.white),
+                )
+              : null,
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: [
-            BottomNavigationBarItem(
-              icon: Image.asset('assets/static/images/home.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home)),
-              activeIcon: Image.asset('assets/static/images/home-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home, color: Colors.green)),
-              label: '主页',
-            ),
-            BottomNavigationBarItem(
-              icon: Image.asset('assets/static/images/family.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite)),
-              activeIcon: Image.asset('assets/static/images/family-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite, color: Colors.green)),
-              label: '亲情守护',
-            ),
-            BottomNavigationBarItem(
-              icon: Image.asset('assets/static/images/user.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person)),
-              activeIcon: Image.asset('assets/static/images/user-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person, color: Colors.green)),
-              label: '我的',
-            ),
-          ],
-        ),
-        // 悬浮球开关按钮（当悬浮球未启用时显示）
-        floatingActionButton: !floatingService.isEnabled
-            ? FloatingActionButton.small(
-                onPressed: () => floatingService.enable(context),
-                backgroundColor: Colors.green,
-                child: const Icon(Icons.record_voice_over, color: Colors.white),
-              )
-            : null,
       ),
     );
   }

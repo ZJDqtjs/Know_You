@@ -5,6 +5,7 @@ import 'common/auth_provider.dart';
 import 'common/notification_service.dart';
 import 'common/floating_ball_service.dart';
 import 'common/shizuku_service.dart';
+import 'common/voice_assistant_service.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/main_page.dart';
 
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()..checkLogin()),
         ChangeNotifierProvider(create: (_) => NotificationService()),
+        ChangeNotifierProvider(create: (_) => VoiceAssistantService()),
         ChangeNotifierProvider.value(value: floatingBallService),
         ChangeNotifierProvider.value(value: shizukuService),
       ],
@@ -50,14 +52,14 @@ class MyApp extends StatelessWidget {
             navigatorKey: NotificationService.navigatorKey,
             theme: ThemeData(
               primarySwatch: Colors.green,
-              scaffoldBackgroundColor: const Color(0xFFF5F5F5),
+              scaffoldBackgroundColor: Color(0xFFE8F5E9),
               appBarTheme: const AppBarTheme(
-                backgroundColor: Color(0xFFE8F5E9),
+                backgroundColor: Color.fromARGB(255, 200, 236, 203),
                 foregroundColor: Colors.black,
                 elevation: 0,
               ),
               bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-                backgroundColor: Color(0xFFE8F5E9),
+                backgroundColor: Color.fromARGB(255, 200, 236, 203),
                 selectedItemColor: Color(0xFF4CAF50),
                 unselectedItemColor: Color(0xFF666666),
               ),

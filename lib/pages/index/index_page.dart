@@ -18,9 +18,9 @@ class _IndexPageState extends State<IndexPage> {
   final PageController _pageController = PageController();
 
   final List<String> _banners = [
-    'assets/static/images/lunbo1.jpg',
-    'assets/static/images/lunbo2.jpg',
-    'assets/static/images/lunbo3.jpg',
+    'assets/images/lunbo1.jpg',
+    'assets/images/lunbo2.jpg',
+    'assets/images/lunbo3.jpg',
   ];
 
   @override
@@ -54,7 +54,7 @@ class _IndexPageState extends State<IndexPage> {
                         ? Icon(Icons.person, size: 30.w, color: Colors.white)
                         : null,
                   ),
-                  SizedBox(width: 12.w),
+                  SizedBox(width: 12.w,height: 20.h,),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -140,7 +140,13 @@ class _IndexPageState extends State<IndexPage> {
                   SizedBox(height: 10.h),
                   _buildHealthItem(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
                   SizedBox(height: 10.h),
-                  _buildHealthItem(Icons.favorite, '血压', '收缩压: 125mmHg 舒张压: 75mmHg', const Color(0xFFEF5350)),
+                  _buildHealthItem(
+                    Icons.favorite,
+                    '血压',
+                    '收缩压: 125mmHg\n舒张压: 75mmHg',
+                    const Color(0xFFEF5350),
+                    multilineValue: true,
+                  ),
                   SizedBox(height: 10.h),
                   _buildHealthItem(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
                 ],
@@ -152,13 +158,13 @@ class _IndexPageState extends State<IndexPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildModuleItem('assets/static/images/icon-phonebook.png', '电话本', () {
+                  _buildModuleItem('assets/images/icon-phonebook.png', '电话本', () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const PhonebookPage()),
                     );
                   }),
-                  _buildModuleItem('assets/static/images/icon-programs.png', '程序', () {
+                  _buildModuleItem('assets/images/icon-programs.png', '程序', () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (context) => const ProgramsPage()),
@@ -173,7 +179,13 @@ class _IndexPageState extends State<IndexPage> {
     );
   }
 
-  Widget _buildHealthItem(IconData icon, String label, String value, Color iconColor) {
+  Widget _buildHealthItem(
+    IconData icon,
+    String label,
+    String value,
+    Color iconColor, {
+    bool multilineValue = false,
+  }) {
     return Container(
       padding: EdgeInsets.all(15.w),
       decoration: BoxDecoration(
@@ -187,7 +199,16 @@ class _IndexPageState extends State<IndexPage> {
           SizedBox(width: 12.w),
           Text(label, style: TextStyle(fontSize: 15.sp, color: const Color(0xFF333333), fontWeight: FontWeight.w500)),
           const Spacer(),
-          Text(value, style: TextStyle(fontSize: 14.sp, color: const Color(0xFF666666))),
+          SizedBox(
+            width: 130.w,
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              maxLines: multilineValue ? 2 : 1,
+              overflow: multilineValue ? TextOverflow.visible : TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 14.sp, color: const Color(0xFF666666)),
+            ),
+          ),
         ],
       ),
     );

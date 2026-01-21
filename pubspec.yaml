@@ -52,6 +52,9 @@ dependencies:
   
   # Text-to-Speech
   flutter_tts: ^4.2.0
+  
+  # Speech Recognition
+  speech_to_text: ^7.0.0
 
 dev_dependencies:
   flutter_test:
