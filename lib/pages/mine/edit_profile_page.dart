@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../common/api.dart';
 import '../../common/auth_provider.dart';
 
@@ -106,29 +110,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _pickImage() async {
-    // Show info toast
-    Fluttertoast.showToast(msg: '图片上传功能需要安装 image_picker 包');
-    
-    // To implement full image picker functionality:
-    // 1. Add image_picker to pubspec.yaml: flutter pub add image_picker
-    // 2. Uncomment the following code:
-    /*
     try {
       final picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
       );
       
-      if (image != null) {
-        await _uploadAvatar(image.path);
+      if (image == null) return;
+
+      final compressedPath = await _compressAvatar(image.path);
+      if (compressedPath == null) {
+        Fluttertoast.showToast(msg: '头像压缩失败');
+        return;
       }
+
+      await _uploadAvatar(compressedPath);
     } catch (e) {
       Fluttertoast.showToast(msg: '选择图片失败: $e');
     }
-    */
+  }
+
+  Future<String?> _compressAvatar(String filePath) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final targetPath = '${tempDir.path}/avatar_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      int quality = 90;
+      int minQuality = 20;
+      String? outputPath;
+
+      while (quality >= minQuality) {
+        final result = await FlutterImageCompress.compressAndGetFile(
+          filePath,
+          targetPath,
+          quality: quality,
+          minWidth: 512,
+          minHeight: 512,
+          format: CompressFormat.jpeg,
+        );
+
+        if (result == null) return null;
+        outputPath = result.path;
+
+        final sizeInBytes = await File(outputPath).length();
+        if (sizeInBytes <= 1024 * 1024) {
+          return outputPath;
+        }
+
+        quality -= 10;
+      }
+
+      return outputPath; // 返回最后一次压缩结果
+    } catch (e) {
+      print('压缩失败: $e');
+      return null;
+    }
   }
 
   Future<void> _uploadAvatar(String filePath) async {
@@ -157,6 +193,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('编辑资料'),
@@ -274,6 +311,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ],
                   ),
                 ),
+              ),
+              SizedBox(height: 30.h),
+              OutlinedButton(
+                onPressed: () {
+                  auth.logout();
+                  Navigator.pop(context);
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: const BorderSide(color: Colors.red),
+                  minimumSize: Size(double.infinity, 48.h),
+                ),
+                child: const Text('退出登录'),
               ),
             ],
           ),

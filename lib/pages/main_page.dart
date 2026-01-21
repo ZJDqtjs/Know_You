@@ -160,18 +160,18 @@ class _MainPageState extends State<MainPage> {
             onTap: (index) => setState(() => _currentIndex = index),
             items: [
               BottomNavigationBarItem(
-                icon: Image.asset('assets/static/images/home.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home)),
-                activeIcon: Image.asset('assets/static/images/home-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home, color: Colors.green)),
+                icon: Image.asset('assets/images/home.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home)),
+                activeIcon: Image.asset('assets/images/home-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.home, color: Colors.green)),
                 label: '主页',
               ),
               BottomNavigationBarItem(
-                icon: Image.asset('assets/static/images/family.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite)),
-                activeIcon: Image.asset('assets/static/images/family-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite, color: Colors.green)),
+                icon: Image.asset('assets/images/family.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite)),
+                activeIcon: Image.asset('assets/images/family-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.favorite, color: Colors.green)),
                 label: '亲情守护',
               ),
               BottomNavigationBarItem(
-                icon: Image.asset('assets/static/images/user.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person)),
-                activeIcon: Image.asset('assets/static/images/user-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person, color: Colors.green)),
+                icon: Image.asset('assets/images/user.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person)),
+                activeIcon: Image.asset('assets/images/user-active.png', width: 24, height: 24, errorBuilder: (c,e,s) => const Icon(Icons.person, color: Colors.green)),
                 label: '我的',
               ),
             ],

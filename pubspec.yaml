@@ -45,6 +45,10 @@ dependencies:
   fluttertoast: ^8.2.14
   url_launcher: ^6.2.6
   permission_handler: ^12.0.1
+  flutter_svg: ^2.0.10
+  image_picker: ^1.1.2
+  flutter_image_compress: ^2.3.0
+  path_provider: ^2.1.3
   
   # Network & WebRTC
   flutter_webrtc: ^1.2.1

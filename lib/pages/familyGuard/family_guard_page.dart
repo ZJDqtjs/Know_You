@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
@@ -218,8 +219,13 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                 height: 50.h,
                 child: ElevatedButton.icon(
                   onPressed: () => _startRemoteAssist(member['id']),
-                  icon: const Icon(Icons.screen_share),
-                  label: const Text('远程协助'),
+                  icon: SvgPicture.asset(
+                    'assets/images/icon-remote.svg',
+                    width: 30.w,
+                    height: 30.w,
+                    colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                  ),
+                  label: Text('远程协助', style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.w600)),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                     foregroundColor: Colors.white,

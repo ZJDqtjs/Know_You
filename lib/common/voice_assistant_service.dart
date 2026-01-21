@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VoiceAssistantService extends ChangeNotifier {
+  static const _prefKeyEnabled = 'voice_assistant_enabled';
   bool _isEnabled = true;
   bool _isListening = false;
   String _wakeWord = '你好，牛肉';
@@ -16,6 +18,7 @@ class VoiceAssistantService extends ChangeNotifier {
   String _partialText = '';
   String? _lastError;
   bool _wakeWordDetected = false;
+  bool _isInitializing = false;
 
   // Getters
   bool get isEnabled => _isEnabled;
@@ -35,6 +38,28 @@ class VoiceAssistantService extends ChangeNotifier {
 
   /// 初始化语音助手
   Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedEnabled = prefs.getBool(_prefKeyEnabled) ?? true;
+      _isEnabled = savedEnabled;
+      notifyListeners();
+
+      if (!_isEnabled) {
+        return;
+      }
+
+      await _initSpeech();
+    } catch (e) {
+      print('初始化语音助手失败: $e');
+      _isEnabled = false;
+      _lastError = '初始化失败，请检查语音识别服务';
+      notifyListeners();
+    }
+  }
+
+  Future<void> _initSpeech() async {
+    if (_isInitializing) return;
+    _isInitializing = true;
     try {
       _lastError = null;
       // 请求麦克风权限
@@ -96,25 +121,38 @@ class VoiceAssistantService extends ChangeNotifier {
       if (_isEnabled && _speechAvailable) {
         _startListening();
       }
-    } catch (e) {
-      print('初始化语音助手失败: $e');
-      _isEnabled = false;
-      _lastError = '初始化失败，请检查语音识别服务';
-      notifyListeners();
+    } finally {
+      _isInitializing = false;
     }
   }
 
   /// 启用语音助手
-  void enable() {
-    if (!_isEnabled || !_speechAvailable) return;
-    _startListening();
+  Future<void> enable() async {
+    _isEnabled = true;
+    notifyListeners();
+    _saveEnabled(true);
+    if (!_speechAvailable) {
+      await _initSpeech();
+    } else {
+      _startListening();
+    }
   }
 
   /// 禁用语音助手
   void disable() {
     _stopListening();
     _isEnabled = false;
+    _saveEnabled(false);
     notifyListeners();
+  }
+
+  Future<void> _saveEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefKeyEnabled, enabled);
+    } catch (e) {
+      print('保存语音助手开关失败: $e');
+    }
   }
 
   /// 开始监听

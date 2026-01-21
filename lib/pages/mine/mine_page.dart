@@ -131,21 +131,35 @@ class _MinePageState extends State<MinePage> {
             SizedBox(height: 20.h),
             
             // Avatar & Name
-            Column(
-              children: [
-                CircleAvatar(
-                  radius: 40.w,
-                  backgroundColor: const Color(0xFFE1BEE7),
-                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: avatarUrl == null || avatarUrl.isEmpty
-                      ? Icon(Icons.person, size: 40.w, color: Colors.white)
-                      : null,
-                ),
-                SizedBox(height: 10.h),
-                Text(nickname, style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
-              ],
+            GestureDetector(
+              onTap: () {
+                if (user == null) {
+                  Fluttertoast.showToast(msg: '请先登录');
+                  return;
+                }
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const EditProfilePage()),
+                ).then((_) {
+                  setState(() {});
+                });
+              },
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 40.w,
+                    backgroundColor: const Color(0xFFE1BEE7),
+                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? NetworkImage(avatarUrl)
+                        : null,
+                    child: avatarUrl == null || avatarUrl.isEmpty
+                        ? Icon(Icons.person, size: 40.w, color: Colors.white)
+                        : null,
+                  ),
+                  SizedBox(height: 10.h),
+                  Text(nickname, style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
 
             // Binding Code
@@ -194,7 +208,7 @@ class _MinePageState extends State<MinePage> {
                   _myInitiatorBindings.isEmpty
                       ? Text('暂无', style: TextStyle(color: Colors.grey, fontSize: 14.sp))
                       : SizedBox(
-                          height: 70.h,
+                          height: 75.h,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: _myInitiatorBindings.length,
@@ -222,7 +236,7 @@ class _MinePageState extends State<MinePage> {
                   _myTargetBindings.isEmpty
                       ? Text('暂无', style: TextStyle(color: Colors.grey, fontSize: 14.sp))
                       : SizedBox(
-                          height: 70.h,
+                          height: 75.h,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
                             itemCount: _myTargetBindings.length,
@@ -348,38 +362,6 @@ class _MinePageState extends State<MinePage> {
               ),
             ),
             
-            // Logout
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const EditProfilePage()),
-                        ).then((_) {
-                          // 编辑完成后刷新数据
-                          setState(() {});
-                        });
-                      },
-                      child: const Text('编辑资料'),
-                    ),
-                  ),
-                  SizedBox(width: 20.w),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () {
-                        auth.logout();
-                      },
-                      style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
-                      child: const Text('退出登录'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
             SizedBox(height: 40.h),
           ],
         ),

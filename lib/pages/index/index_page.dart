@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -16,12 +17,39 @@ class IndexPage extends StatefulWidget {
 class _IndexPageState extends State<IndexPage> {
   int _currentSwiper = 0;
   final PageController _pageController = PageController();
+  Timer? _bannerTimer;
 
   final List<String> _banners = [
     'assets/images/lunbo1.jpg',
     'assets/images/lunbo2.jpg',
     'assets/images/lunbo3.jpg',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _startBannerTimer();
+  }
+
+  @override
+  void dispose() {
+    _bannerTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _startBannerTimer() {
+    _bannerTimer?.cancel();
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || _banners.isEmpty) return;
+      final nextPage = (_currentSwiper + 1) % _banners.length;
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +104,7 @@ class _IndexPageState extends State<IndexPage> {
             CommonCard(
               padding: EdgeInsets.zero,
               child: SizedBox(
-                height: 120.h,
+                height: 150.h,
                 child: Stack(
                   children: [
                     PageView.builder(
@@ -85,7 +113,7 @@ class _IndexPageState extends State<IndexPage> {
                       onPageChanged: (index) => setState(() => _currentSwiper = index),
                       itemBuilder: (context, index) {
                         return Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 40.w), // To match "width: 70%" sort of
+                          padding: EdgeInsets.symmetric(horizontal: 20.w), // To match "width: 70%" sort of
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(10.r),
                             child: Image.asset(
@@ -98,7 +126,7 @@ class _IndexPageState extends State<IndexPage> {
                       },
                     ),
                     Positioned(
-                      left: 10.w,
+                      left: 1.w,
                       top: 0,
                       bottom: 0,
                       child: Center(
@@ -113,7 +141,7 @@ class _IndexPageState extends State<IndexPage> {
                       ),
                     ),
                     Positioned(
-                      right: 10.w,
+                      left: 300.w,
                       top: 0,
                       bottom: 0,
                       child: Center(
@@ -125,6 +153,27 @@ class _IndexPageState extends State<IndexPage> {
                             }
                           },
                         ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 8.h,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(_banners.length, (index) {
+                          final isActive = index == _currentSwiper;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: EdgeInsets.symmetric(horizontal: 3.w),
+                            width: isActive ? 10.w : 6.w,
+                            height: isActive ? 10.w : 6.w,
+                            decoration: BoxDecoration(
+                              color: isActive ? const Color(0xFF2E7D32) : Colors.white70,
+                              shape: BoxShape.circle,
+                            ),
+                          );
+                        }),
                       ),
                     ),
                   ],

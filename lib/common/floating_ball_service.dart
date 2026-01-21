@@ -17,7 +17,7 @@ class FloatingBallService extends ChangeNotifier {
   bool _isReadMode = false;  // 是否处于朗读模式（点击悬浮球后）
   bool _isSpeaking = false;
   bool _isInitialized = false;
-  bool _useNativeFloatingBall = true;  // 使用原生悬浮球
+  bool _useNativeFloatingBall = false;  // 使用Flutter悬浮球以保持统一图标
   bool _noTtsEngine = false;  // 标记是否没有TTS引擎
   
   OverlayEntry? _overlayEntry;

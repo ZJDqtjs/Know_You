@@ -88,19 +88,21 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay> {
           children: [
             widget.child,
             // 浮窗按钮（固定在右下角）
-            Positioned(
-              right: 16,
-              bottom: 16,
-              child: FloatingActionButton(
-                onPressed: service.isEnabled
-                    ? () {
-                        if (!_isDialogVisible) {
-                          _showVoiceAssistantDialog();
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16),
+                child: FloatingActionButton(
+                  onPressed: service.isEnabled
+                      ? () {
+                          if (!_isDialogVisible) {
+                            _showVoiceAssistantDialog();
+                          }
                         }
-                      }
-                    : null,
-                backgroundColor: service.isEnabled ? Colors.green : Colors.grey,
-                child: const Icon(Icons.mic),
+                      : null,
+                  backgroundColor: service.isEnabled ? Colors.green : Colors.grey,
+                  child: const Icon(Icons.mic),
+                ),
               ),
             ),
           ],
