@@ -151,6 +151,8 @@ class MallApi {
         if (categoryId != null) 'categoryId': categoryId,
       });
 
+  Future<dynamic> createProduct(Map<String, dynamic> data) => _http.post('/mall/products', data: data);
+
   Future<dynamic> getProduct(int productId) => _http.get('/mall/products/$productId');
 
   Future<dynamic> listOrders({int page = 1, int pageSize = 20, String? status}) =>

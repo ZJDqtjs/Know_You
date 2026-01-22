@@ -17,9 +17,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:label="know_you"
+        android:label="知颐"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/familyguard"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"

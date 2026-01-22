@@ -34,6 +34,7 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  flutter_launcher_icons: ^0.13.1
   
   # Core dependencies
   provider: ^6.1.2
@@ -118,3 +119,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: "familyguard"  # Android图标名称
+  ios: true                 # 启用iOS图标生成
+  image_path: "assets/familyguard.png"  # 你的基础图标路径（建议1024×1024px）
+  adaptive_icon_background: "#FFFFFF"  # Android自适应图标背景色（可选）
+  adaptive_icon_foreground: "assets/familyguard.png"  # Android自适应图标前景（可选）
