@@ -64,6 +64,18 @@ class _IndexPageState extends State<IndexPage> {
         : '请登录';
     final avatarUrl = user?['avatar'];
 
+    String greeting = '';
+    int hour = DateTime.now().hour;
+    if (hour < 11) {
+      greeting = '早上好';
+    } else if (hour < 14) {
+      greeting = '中午好';
+    } else if (hour < 18) {
+      greeting = '下午好';
+    } else {
+      greeting = '晚上好';
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('主页'),
@@ -77,13 +89,13 @@ class _IndexPageState extends State<IndexPage> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 27.5.w,
+                    radius: 22.w,
                     backgroundColor: const Color(0xFFE1BEE7),
                     backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty 
                         ? NetworkImage(avatarUrl) 
                         : null,
                     child: avatarUrl == null || avatarUrl.isEmpty
-                        ? Icon(Icons.person, size: 30.w, color: Colors.white)
+                        ? Icon(Icons.person, size: 24.w, color: Colors.white)
                         : null,
                   ),
                   SizedBox(width: 12.w,height: 20.h,),
@@ -92,11 +104,11 @@ class _IndexPageState extends State<IndexPage> {
                     children: [
                       Text(
                         userName,
-                        style: TextStyle(fontSize: 18.sp, color: const Color(0xFF2E7D32), fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 16.sp, color: const Color(0xFF2E7D32), fontWeight: FontWeight.bold),
                       ),
                       Text(
                         '早上好',
-                        style: TextStyle(fontSize: 22.sp, color: const Color(0xFF1B5E20), fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 20.sp, color: const Color(0xFF1B5E20), fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -190,9 +202,9 @@ class _IndexPageState extends State<IndexPage> {
               child: Column(
                 children: [
                   _buildHealthItem(Icons.wb_sunny, '今日天气', '7°C~18°C', const Color(0xFFFFA726)),
-                  SizedBox(height: 10.h),
+                  SizedBox(height: 6.h),
                   _buildHealthItem(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
-                  SizedBox(height: 10.h),
+                  SizedBox(height: 6.h),
                   _buildHealthItem(
                     Icons.favorite,
                     '血压',
@@ -200,7 +212,7 @@ class _IndexPageState extends State<IndexPage> {
                     const Color(0xFFEF5350),
                     multilineValue: true,
                   ),
-                  SizedBox(height: 10.h),
+                  SizedBox(height: 6.h),
                   _buildHealthItem(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
                 ],
               ),
@@ -240,7 +252,7 @@ class _IndexPageState extends State<IndexPage> {
     bool multilineValue = false,
   }) {
     return Container(
-      padding: EdgeInsets.all(15.w),
+      padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 10.h),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: const Color(0xFFE0E0E0)),
@@ -248,9 +260,9 @@ class _IndexPageState extends State<IndexPage> {
       ),
       child: Row(
         children: [
-          Icon(icon, size: 30.w, color: iconColor),
+          Icon(icon, size: 24.w, color: iconColor),
           SizedBox(width: 12.w),
-          Text(label, style: TextStyle(fontSize: 15.sp, color: const Color(0xFF333333), fontWeight: FontWeight.w500)),
+          Text(label, style: TextStyle(fontSize: 14.sp, color: const Color(0xFF333333), fontWeight: FontWeight.w500)),
           const Spacer(),
           SizedBox(
             width: 130.w,

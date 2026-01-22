@@ -82,7 +82,7 @@ class _PhonebookPageState extends State<PhonebookPage> {
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator())
           : GridView.builder(
-              padding: EdgeInsets.all(20.w),
+              padding: EdgeInsets.all(18.w),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 20.w,
@@ -148,7 +148,7 @@ class _PhonebookPageState extends State<PhonebookPage> {
             SizedBox(height: 8.h),
             Text(
               contact['phone'],
-              style: TextStyle(fontSize: 24.sp, color: const Color(0xFF666666)),
+              style: TextStyle(fontSize: 20.sp, color: const Color(0xFF666666)),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,
             ),

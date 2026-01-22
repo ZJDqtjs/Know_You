@@ -11,6 +11,7 @@ import '../../widgets/common_card.dart';
 import '../voice_assistant_settings_page.dart';
 import 'edit_profile_page.dart';
 import 'accessibility_keep_alive_page.dart';
+import 'post_manage_page.dart';
 
 class MinePage extends StatefulWidget {
   const MinePage({super.key});
@@ -257,6 +258,41 @@ class _MinePageState extends State<MinePage> {
 
             SizedBox(height: 20.h),
             
+            // 帖子管理入口
+            CommonCard(
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PostManagePage()),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.article_outlined, color: Colors.orange),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('帖子管理', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500)),
+                          Text('管理与删除我的帖子', style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+
             // 无障碍保活设置入口
             CommonCard(
               child: InkWell(

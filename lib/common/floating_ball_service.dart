@@ -17,7 +17,7 @@ class FloatingBallService extends ChangeNotifier {
   bool _isReadMode = false;  // 是否处于朗读模式（点击悬浮球后）
   bool _isSpeaking = false;
   bool _isInitialized = false;
-  bool _useNativeFloatingBall = false;  // 使用Flutter悬浮球以保持统一图标
+  bool _useNativeFloatingBall = true;  // 默认使用原生悬浮球以支持应用外悬浮
   bool _noTtsEngine = false;  // 标记是否没有TTS引擎
   
   OverlayEntry? _overlayEntry;
@@ -505,9 +505,9 @@ class _FloatingBallWidgetState extends State<_FloatingBallWidget> with SingleTic
               alignment: Alignment.center,
               children: [
                 Icon(
-                  widget.service.isReadMode 
-                      ? Icons.touch_app 
-                      : (widget.service.isSpeaking ? Icons.volume_up : Icons.record_voice_over),
+                  widget.service.isReadMode
+                      ? Icons.touch_app
+                      : (widget.service.isSpeaking ? Icons.graphic_eq : Icons.volume_up),
                   color: Colors.white,
                   size: 28,
                 ),

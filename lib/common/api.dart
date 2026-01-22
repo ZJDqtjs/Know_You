@@ -11,6 +11,8 @@ class Api {
   static final ScreenApi screen = ScreenApi(_http);
   static final SchedulesApi schedules = SchedulesApi(_http);
   static final LogsApi logs = LogsApi(_http);
+  static final CommunityApi community = CommunityApi(_http);
+  static final MallApi mall = MallApi(_http);
 }
 
 class AuthApi {
@@ -97,4 +99,64 @@ class LogsApi {
   Future<dynamic> control(int userId, {int page = 1, int pageSize = 20}) => 
       _http.get('/logs/control', params: {'userId': userId, 'page': page, 'pageSize': pageSize});
   Future<dynamic> healthAccess(int userId) => _http.get('/logs/health-access', params: {'userId': userId});
+}
+
+class CommunityApi {
+  final HttpService _http;
+  CommunityApi(this._http);
+
+  Future<dynamic> listPosts({int page = 1, int pageSize = 20, String sort = 'time'}) =>
+      _http.get('/community/posts', params: {'page': page, 'pageSize': pageSize, 'sort': sort});
+
+    Future<dynamic> listMyPosts({int page = 1, int pageSize = 20, String sort = 'time'}) =>
+      _http.get('/community/posts/mine', params: {'page': page, 'pageSize': pageSize, 'sort': sort});
+
+  Future<dynamic> getPost(int postId) => _http.get('/community/posts/$postId');
+
+  Future<dynamic> createPost({String? title, String? content, String? voiceUrl, int? voiceDuration, List<String>? imageUrls}) =>
+      _http.post('/community/posts', data: {
+        'title': title,
+        'content': content,
+        'voiceUrl': voiceUrl,
+        'voiceDuration': voiceDuration,
+        'imageUrls': imageUrls,
+      });
+
+  Future<dynamic> deletePost(int postId) => _http.delete('/community/posts/$postId');
+
+  Future<dynamic> toggleLike(int postId) => _http.post('/community/posts/$postId/like', data: {});
+
+  Future<dynamic> listComments(int postId, {int page = 1, int pageSize = 20}) =>
+      _http.get('/community/posts/$postId/comments', params: {'page': page, 'pageSize': pageSize});
+
+  Future<dynamic> addComment(int postId, {String? content, String? voiceUrl, int? voiceDuration}) =>
+      _http.post('/community/posts/$postId/comments', data: {
+        'content': content,
+        'voiceUrl': voiceUrl,
+        'voiceDuration': voiceDuration,
+      });
+}
+
+class MallApi {
+  final HttpService _http;
+  MallApi(this._http);
+
+  Future<dynamic> listCategories() => _http.get('/mall/categories');
+
+  Future<dynamic> listProducts({int page = 1, int pageSize = 20, String? keyword, int? categoryId}) =>
+      _http.get('/mall/products', params: {
+        'page': page,
+        'pageSize': pageSize,
+        if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
+        if (categoryId != null) 'categoryId': categoryId,
+      });
+
+  Future<dynamic> getProduct(int productId) => _http.get('/mall/products/$productId');
+
+  Future<dynamic> listOrders({int page = 1, int pageSize = 20, String? status}) =>
+      _http.get('/mall/orders', params: {
+        'page': page,
+        'pageSize': pageSize,
+        if (status != null && status.isNotEmpty) 'status': status,
+      });
 }

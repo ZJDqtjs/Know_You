@@ -1,13 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import '../../common/api.dart';
 
-class ProductDetailPage extends StatelessWidget {
-  final int index;
+class ProductDetailPage extends StatefulWidget {
+  final Map<String, dynamic> product;
 
-  const ProductDetailPage({super.key, required this.index});
+  const ProductDetailPage({super.key, required this.product});
+
+  @override
+  State<ProductDetailPage> createState() => _ProductDetailPageState();
+}
+
+class _ProductDetailPageState extends State<ProductDetailPage> {
+  Map<String, dynamic>? _product;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _product = Map<String, dynamic>.from(widget.product);
+    _fetchProduct();
+  }
+
+  int? get _productId {
+    final id = _product?['id'] ?? widget.product['id'];
+    if (id is int) return id;
+    if (id is String) return int.tryParse(id);
+    return null;
+  }
+
+  Future<void> _fetchProduct() async {
+    final productId = _productId;
+    if (productId == null) return;
+    setState(() => _isLoading = true);
+    try {
+      final res = await Api.mall.getProduct(productId);
+      if (res is Map) {
+        setState(() => _product = Map<String, dynamic>.from(res));
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: '加载商品失败');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final product = _product ?? widget.product;
+    final imageUrl = product['imageUrl'];
     return Scaffold(
       appBar: AppBar(
         title: const Text('商品详情'),
@@ -30,7 +72,9 @@ class ProductDetailPage extends StatelessWidget {
                     height: 300.h,
                     color: Colors.grey[200],
                     child: Center(
-                      child: Icon(Icons.image, size: 100.sp, color: Colors.grey[400]),
+                      child: imageUrl is String && imageUrl.isNotEmpty
+                          ? Image.network(imageUrl, fit: BoxFit.cover)
+                          : Icon(Icons.image, size: 100.sp, color: Colors.grey[400]),
                     ),
                   ),
                   
@@ -52,7 +96,7 @@ class ProductDetailPage extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              '${(index + 1) * 19.9}',
+                              '${product['price'] ?? '--'}',
                               style: TextStyle(
                                 color: Colors.red,
                                 fontSize: 28.sp,
@@ -77,7 +121,7 @@ class ProductDetailPage extends StatelessWidget {
                         
                         // Title
                         Text(
-                          '商品名称示例 ${index + 1} - 适合老年人使用的生活好物，舒适耐用，品质保证',
+                          product['name'] ?? '商品',
                           style: TextStyle(
                             fontSize: 18.sp,
                             fontWeight: FontWeight.bold,
@@ -90,7 +134,7 @@ class ProductDetailPage extends StatelessWidget {
                         Row(
                           children: [
                             Text(
-                              '月销 ${(index + 1) * 300}+',
+                              '已售 ${product['soldCount'] ?? 0}+',
                               style: TextStyle(color: Colors.grey, fontSize: 12.sp),
                             ),
                             const Spacer(),
@@ -125,7 +169,7 @@ class ProductDetailPage extends StatelessWidget {
                           color: Colors.grey[100],
                           child: Center(
                             child: Text(
-                              '商品详细介绍图文区域',
+                              product['desc'] ?? '暂无详情描述',
                               style: TextStyle(color: Colors.grey),
                             ),
                           ),
@@ -137,6 +181,8 @@ class ProductDetailPage extends StatelessWidget {
               ),
             ),
           ),
+          if (_isLoading)
+            const LinearProgressIndicator(minHeight: 2),
           
           // Bottom Action Bar
           Container(

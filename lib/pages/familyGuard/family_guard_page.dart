@@ -23,6 +23,7 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   // WebRTC
   WebRTCService? _webRTC;
   RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
+  bool _rendererInitialized = false;
   bool _inCall = false;
   bool _virtualMouseEnabled = false;
   WebRTCConnectionState _rtcState = WebRTCConnectionState.idle;
@@ -39,11 +40,19 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
 
   Future<void> _initRenderers() async {
     await _remoteRenderer.initialize();
+    _rendererInitialized = true;
   }
 
   @override
   void dispose() {
-    _remoteRenderer.dispose();
+    if (_rendererInitialized) {
+      try {
+        _remoteRenderer.dispose();
+      } catch (e) {
+        // 忽略 flutter_webrtc 在 Surface 为空时的已知崩溃
+        print('RTCVideoRenderer dispose ignored: $e');
+      }
+    }
     _webRTC?.close();
     _assistUiVersion.dispose();
     super.dispose();
