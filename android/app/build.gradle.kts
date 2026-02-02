@@ -44,6 +44,7 @@ android {
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            abiFilters -= "x86_64"
         }
     }
 
@@ -59,6 +60,11 @@ android {
                 "proguard-rules.pro"
             )
             isZipAlignEnabled = true
+        }
+    }
+    packaging {
+        resources {
+            excludes += "lib/x86_64/**"
         }
     }
 }

@@ -19,7 +19,7 @@
     <application
         android:label="知颐"
         android:name="${applicationName}"
-        android:icon="@mipmap/familyguard"
+        android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
