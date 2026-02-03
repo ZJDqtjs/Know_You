@@ -2,6 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:health/health.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
+import '../../common/api.dart';
 import '../../common/auth_provider.dart';
 import '../../common/programs_cache.dart';
 import '../../widgets/common_card.dart';
@@ -19,6 +24,16 @@ class _IndexPageState extends State<IndexPage> {
   int _currentSwiper = 0;
   final PageController _pageController = PageController();
   Timer? _bannerTimer;
+  Timer? _syncTimer;
+  Map<String, dynamic>? _latestHealth;
+  Map<String, dynamic>? _localWeather;
+  bool _healthLoading = false;
+  bool _syncing = false;
+  int? _healthUserId;
+  bool _healthAuthDenied = false;
+  bool _healthManualAuthInFlight = false;
+  String? _weatherCity;
+  String? _weatherConfigError;
 
   final List<String> _banners = [
     'assets/images/lunbo1.jpg',
@@ -30,14 +45,27 @@ class _IndexPageState extends State<IndexPage> {
   void initState() {
     super.initState();
     _startBannerTimer();
+    _loadHealthAuthFlag();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ProgramsCache.preload();
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context);
+    final userId = auth.user?['id'];
+    if (userId != null && userId is int && _healthUserId != userId) {
+      _healthUserId = userId;
+      _startAutoSync();
+    }
+  }
+
+  @override
   void dispose() {
     _bannerTimer?.cancel();
+    _syncTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -53,6 +81,205 @@ class _IndexPageState extends State<IndexPage> {
         curve: Curves.easeInOut,
       );
     });
+  }
+
+  void _startAutoSync() {
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(minutes: 10), (_) => _syncAll());
+    _syncAll();
+  }
+
+  Future<void> _syncAll({bool allowHealthPrompt = false}) async {
+    if (_healthUserId == null || _syncing) return;
+    _syncing = true;
+    setState(() => _healthLoading = true);
+    try {
+      await _syncDeviceHealth(allowPrompt: allowHealthPrompt);
+      await _syncWeather();
+    } finally {
+      _syncing = false;
+      if (mounted) setState(() => _healthLoading = false);
+    }
+  }
+
+  Future<void> _syncDeviceHealth({required bool allowPrompt}) async {
+    try {
+      if (allowPrompt) {
+        final activityStatus = await Permission.activityRecognition.request();
+        if (!activityStatus.isGranted) {
+          return;
+        }
+      }
+      final now = DateTime.now();
+      final startToday = DateTime(now.year, now.month, now.day);
+      final startSleep = now.subtract(const Duration(hours: 24));
+
+      final health = Health();
+      await health.configure(useHealthConnectIfAvailable: true);
+      final types = [HealthDataType.STEPS, HealthDataType.SLEEP_ASLEEP, HealthDataType.SLEEP_IN_BED];
+      final permissions = [
+        HealthDataAccess.READ,
+        HealthDataAccess.READ,
+        HealthDataAccess.READ,
+      ];
+
+      final authorized = await _ensureHealthPermission(health, types, permissions, allowPrompt: allowPrompt);
+      if (!authorized) return;
+
+      final steps = await health.getTotalStepsInInterval(startToday, now);
+      final sleepData = await health.getHealthDataFromTypes(
+        types: [
+          HealthDataType.SLEEP_ASLEEP,
+          HealthDataType.SLEEP_IN_BED,
+        ],
+        startTime: startSleep,
+        endTime: now,
+      );
+
+      Duration sleepDuration = Duration.zero;
+      for (final d in sleepData) {
+        sleepDuration += d.dateTo.difference(d.dateFrom);
+      }
+      final sleepHours = sleepDuration.inMinutes / 60.0;
+
+      _latestHealth = {
+        'steps': steps ?? 0,
+        'sleepHours': sleepHours.isFinite ? sleepHours : 0,
+      };
+      if (mounted) setState(() {});
+
+      await Api.health.sync({
+        'steps': steps ?? 0,
+        'sleepHours': sleepHours.isFinite ? sleepHours : 0,
+      });
+    } catch (e) {
+      // ignore device health fetch errors
+    }
+  }
+
+  Future<void> _loadHealthAuthFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    _healthAuthDenied = prefs.getBool('health_auth_denied') ?? false;
+  }
+
+  Future<bool> _ensureHealthPermission(
+    Health health,
+    List<HealthDataType> types,
+    List<HealthDataAccess> permissions, {
+    required bool allowPrompt,
+  }) async {
+    final has = await health.hasPermissions(types, permissions: permissions);
+    if (has == true) return true;
+
+    if (!allowPrompt || _healthAuthDenied || _healthManualAuthInFlight) {
+      return false;
+    }
+
+    _healthManualAuthInFlight = true;
+    try {
+      final ok = await health.requestAuthorization(types, permissions: permissions);
+      if (!ok) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('health_auth_denied', true);
+        _healthAuthDenied = true;
+      }
+      return ok;
+    } finally {
+      _healthManualAuthInFlight = false;
+    }
+  }
+
+  Future<void> _syncWeather() async {
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) return;
+
+      final position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.medium);
+      final data = await Api.weather.sync({
+        'lat': position.latitude,
+        'lon': position.longitude,
+      });
+      _weatherConfigError = null;
+      _localWeather = {
+        'city': data?['location']?['city'],
+        'temperature': data?['temperature'],
+        'humidity': data?['humidity'],
+        'condition': data?['condition'],
+      };
+      if (mounted) setState(() {});
+    } catch (e) {
+      _weatherConfigError = '天气同步失败';
+    }
+  }
+
+  String _formatSleepHours(dynamic hours) {
+    if (hours == null) return '暂无数据';
+    final h = double.tryParse(hours.toString());
+    if (h == null) return '暂无数据';
+    return '${h.toStringAsFixed(1)}小时';
+  }
+
+  String _formatSteps(dynamic steps) {
+    if (steps == null) return '暂无数据';
+    final v = int.tryParse(steps.toString());
+    if (v == null) return '暂无数据';
+    return '${v}步';
+  }
+
+  String _formatHeartRate(dynamic hr) {
+    if (hr == null) return '暂无数据';
+    final v = int.tryParse(hr.toString());
+    if (v == null) return '暂无数据';
+    return '平均心率: ${v}次/分';
+  }
+
+  String _formatBloodPressure(dynamic bp) {
+    if (bp is Map) {
+      final sys = bp['systolic'];
+      final dia = bp['diastolic'];
+      if (sys != null || dia != null) {
+        return '收缩压: ${sys ?? '--'}mmHg\n舒张压: ${dia ?? '--'}mmHg';
+      }
+    }
+    return '暂无数据';
+  }
+
+  String _formatWeather() {
+    if (_weatherConfigError != null) return _weatherConfigError!;
+    final temp = _localWeather?['temperature'];
+    final humidity = _localWeather?['humidity'];
+    final condition = _localWeather?['condition'];
+    if (temp == null && humidity == null && condition == null) return '暂无数据';
+    final t = temp != null ? '${temp}°C' : '--';
+    final h = humidity != null ? '湿度${humidity}%' : '湿度--';
+    final c = condition ?? '未知';
+    final city = _localWeather?['city'];
+    return city != null ? '$city $c $t · $h' : '$c $t · $h';
+  }
+
+  String _weatherCodeToText(dynamic code) {
+    final v = int.tryParse(code?.toString() ?? '');
+    if (v == null) return '未知';
+    if (v == 0) return '晴';
+    if (v == 1 || v == 2) return '少云';
+    if (v == 3) return '多云';
+    if (v == 45 || v == 48) return '雾';
+    if (v == 51 || v == 53 || v == 55) return '毛毛雨';
+    if (v == 56 || v == 57) return '冻雨';
+    if (v == 61 || v == 63 || v == 65) return '雨';
+    if (v == 66 || v == 67) return '冻雨';
+    if (v == 71 || v == 73 || v == 75) return '雪';
+    if (v == 77) return '雪粒';
+    if (v == 80 || v == 81 || v == 82) return '阵雨';
+    if (v == 85 || v == 86) return '阵雪';
+    if (v == 95) return '雷暴';
+    if (v == 96 || v == 99) return '雷暴冰雹';
+    return '未知';
   }
 
   @override
@@ -107,7 +334,7 @@ class _IndexPageState extends State<IndexPage> {
                         style: TextStyle(fontSize: 16.sp, color: const Color(0xFF2E7D32), fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        '早上好',
+                        greeting,
                         style: TextStyle(fontSize: 20.sp, color: const Color(0xFF1B5E20), fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -201,19 +428,40 @@ class _IndexPageState extends State<IndexPage> {
             CommonCard(
               child: Column(
                 children: [
-                  _buildHealthItem(Icons.wb_sunny, '今日天气', '7°C~18°C', const Color(0xFFFFA726)),
+                  Row(
+                    children: [
+                      Text('健康数据', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF2E7D32))),
+                      const Spacer(),
+                      if (_healthLoading)
+                        SizedBox(width: 16.w, height: 16.w, child: const CircularProgressIndicator(strokeWidth: 2)),
+                      TextButton.icon(
+                        onPressed: _healthUserId == null ? null : () => _syncAll(allowHealthPrompt: true),
+                        icon: const Icon(Icons.sync, size: 16),
+                        label: const Text('同步'),
+                      ),
+                      IconButton(
+                        onPressed: _healthUserId == null ? null : () => _syncAll(allowHealthPrompt: true),
+                        icon: const Icon(Icons.refresh, size: 18),
+                        tooltip: '刷新',
+                      ),
+                    ],
+                  ),
                   SizedBox(height: 6.h),
-                  _buildHealthItem(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
+                  _buildHealthItem(Icons.wb_sunny, '今日天气', _formatWeather(), const Color(0xFFFFA726)),
+                  SizedBox(height: 6.h),
+                  _buildHealthItem(Icons.directions_walk, '今日步数', _formatSteps(_latestHealth?['steps']), const Color(0xFF43A047)),
+                  SizedBox(height: 6.h),
+                  _buildHealthItem(Icons.bedtime, '睡眠时长', _formatSleepHours(_latestHealth?['sleepHours']), const Color(0xFF9C27B0)),
                   SizedBox(height: 6.h),
                   _buildHealthItem(
                     Icons.favorite,
                     '血压',
-                    '收缩压: 125mmHg\n舒张压: 75mmHg',
+                    _formatBloodPressure(_latestHealth?['bloodPressure']),
                     const Color(0xFFEF5350),
                     multilineValue: true,
                   ),
                   SizedBox(height: 6.h),
-                  _buildHealthItem(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
+                  _buildHealthItem(Icons.favorite, '心率', _formatHeartRate(_latestHealth?['heartRate']), const Color(0xFFE91E63)),
                 ],
               ),
             ),

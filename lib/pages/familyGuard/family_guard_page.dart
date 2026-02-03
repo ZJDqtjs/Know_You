@@ -1,7 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../common/api.dart';
 import '../../common/webrtc_service.dart';
@@ -19,6 +19,7 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   List<dynamic> _members = [];
   int _activeIndex = -1;
   bool _isLoading = false;
+  Timer? _healthSyncTimer;
   
   // WebRTC
   WebRTCService? _webRTC;
@@ -31,11 +32,17 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   bool _assistDialogOpen = false;
   final ValueNotifier<int> _assistUiVersion = ValueNotifier<int>(0);
 
+  final Map<int, Map<String, dynamic>> _healthByUserId = {};
+  final Map<int, bool> _healthLoadingByUserId = {};
+  final Map<int, Map<String, dynamic>> _weatherByUserId = {};
+  final Map<int, bool> _weatherLoadingByUserId = {};
+
   @override
   void initState() {
     super.initState();
     _initRenderers();
     _fetchMembers();
+    _startHealthAutoSync();
   }
 
   Future<void> _initRenderers() async {
@@ -55,7 +62,22 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
     }
     _webRTC?.close();
     _assistUiVersion.dispose();
+    _healthSyncTimer?.cancel();
     super.dispose();
+  }
+
+  void _startHealthAutoSync() {
+    _healthSyncTimer?.cancel();
+    _healthSyncTimer = Timer.periodic(const Duration(minutes: 10), (_) => _refreshActiveMemberHealth());
+  }
+
+  void _refreshActiveMemberHealth() {
+    if (_activeIndex == -1 || _activeIndex >= _members.length) return;
+    final memberId = _members[_activeIndex]['id'];
+    if (memberId is int) {
+      _loadMemberHealth(memberId);
+      _loadMemberWeather(memberId);
+    }
   }
 
   Future<void> _fetchMembers() async {
@@ -89,11 +111,94 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
           _activeIndex = -1;
         }
       });
+      if (_members.isNotEmpty) {
+        final id = _members[0]['id'];
+        if (id is int) {
+          _loadMemberHealth(id);
+          _loadMemberWeather(id);
+        }
+      }
     } catch (e) {
       print('Fetch members failed: $e');
     } finally {
       setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _loadMemberHealth(int userId) async {
+    _healthLoadingByUserId[userId] = true;
+    setState(() {});
+    try {
+      final data = await Api.health.latest(userId);
+      _healthByUserId[userId] = Map<String, dynamic>.from(data ?? {});
+      _healthLoadingByUserId[userId] = false;
+      _bumpAssistUi();
+      if (mounted) setState(() {});
+    } catch (e) {
+      _healthByUserId.remove(userId);
+      _healthLoadingByUserId[userId] = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  Future<void> _loadMemberWeather(int userId) async {
+    _weatherLoadingByUserId[userId] = true;
+    setState(() {});
+    try {
+      final data = await Api.weather.get(userId);
+      _weatherByUserId[userId] = Map<String, dynamic>.from(data ?? {});
+      _weatherLoadingByUserId[userId] = false;
+      if (mounted) setState(() {});
+    } catch (e) {
+      _weatherByUserId.remove(userId);
+      _weatherLoadingByUserId[userId] = false;
+      if (mounted) setState(() {});
+    }
+  }
+
+  String _formatSleepHours(dynamic hours) {
+    if (hours == null) return '暂无数据';
+    final h = double.tryParse(hours.toString());
+    if (h == null) return '暂无数据';
+    return '${h.toStringAsFixed(1)}小时';
+  }
+
+  String _formatHeartRate(dynamic hr) {
+    if (hr == null) return '暂无数据';
+    final v = int.tryParse(hr.toString());
+    if (v == null) return '暂无数据';
+    return '平均心率: ${v}次/分';
+  }
+
+  String _formatBloodPressure(dynamic bp) {
+    if (bp is Map) {
+      final sys = bp['systolic'];
+      final dia = bp['diastolic'];
+      if (sys != null || dia != null) {
+        return '收缩压: ${sys ?? '--'}mmHg 舒张压: ${dia ?? '--'}mmHg';
+      }
+    }
+    return '暂无数据';
+  }
+
+  String _formatSteps(dynamic steps) {
+    if (steps == null) return '暂无数据';
+    final v = int.tryParse(steps.toString());
+    if (v == null) return '暂无数据';
+    return '${v}步';
+  }
+
+  String _formatWeather(Map<String, dynamic>? weather) {
+    if (weather == null) return '暂无数据';
+    final location = weather['location'] as Map?;
+    final city = location?['city']?.toString();
+    final temp = weather['temperature']?.toString();
+    final humidity = weather['humidity']?.toString();
+    final condition = weather['condition']?.toString();
+    final t = temp != null ? '${temp}°C' : '--';
+    final h = humidity != null ? '湿度${humidity}%' : '湿度--';
+    final c = condition ?? '未知';
+    return city != null ? '$city $c $t · $h' : '$c $t · $h';
   }
 
   @override
@@ -151,7 +256,14 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                                     final avatarUrl = member['avatar'];
                                     
                                     return GestureDetector(
-                                      onTap: () => setState(() => _activeIndex = index),
+                                      onTap: () {
+                                        setState(() => _activeIndex = index);
+                                        final id = member['id'];
+                                        if (id is int) {
+                                          _loadMemberHealth(id);
+                                          _loadMemberWeather(id);
+                                        }
+                                      },
                                       child: Container(
                                         width: 80.w,
                                         margin: EdgeInsets.symmetric(horizontal: 10.w),
@@ -216,6 +328,11 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
   }
 
   Widget _buildDetailCard(dynamic member) {
+    final memberId = member['id'];
+    final health = memberId is int ? _healthByUserId[memberId] : null;
+    final loading = memberId is int ? (_healthLoadingByUserId[memberId] ?? false) : false;
+    final weather = memberId is int ? _weatherByUserId[memberId] : null;
+    final weatherLoading = memberId is int ? (_weatherLoadingByUserId[memberId] ?? false) : false;
     return Column(
       children: [
         CommonCard(
@@ -241,6 +358,15 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                   ),
                 ),
               ),
+              SizedBox(height: 10.h),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: memberId is int ? () => _loadMemberHealth(memberId) : null,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('刷新健康数据'),
+                ),
+              ),
             ],
           ),
         ),
@@ -249,13 +375,24 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
         CommonCard(
           child: Column(
             children: [
-              _buildHealthRow(Icons.wb_sunny, '今日天气', '7°C~18°C', const Color(0xFFFFA726)),
+              Row(
+                children: [
+                  Text('健康数据', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: const Color(0xFF2E7D32))),
+                  const Spacer(),
+                  if (loading || weatherLoading)
+                    SizedBox(width: 16.w, height: 16.w, child: const CircularProgressIndicator(strokeWidth: 2)),
+                ],
+              ),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.bedtime, '睡眠时长', '8小时48分钟', const Color(0xFF9C27B0)),
+              _buildHealthRow(Icons.wb_sunny, '今日天气', _formatWeather(weather), const Color(0xFFFFA726)),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.favorite, '血压', '收缩压: 125mmHg 舒张压: 75mmHg', const Color(0xFFEF5350),multilineValue:true,),
+              _buildHealthRow(Icons.directions_walk, '今日步数', _formatSteps(health?['steps']), const Color(0xFF43A047)),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.favorite, '心率', '平均心率: 70次/分', const Color(0xFFE91E63)),
+              _buildHealthRow(Icons.bedtime, '睡眠时长', _formatSleepHours(health?['sleepHours']), const Color(0xFF9C27B0)),
+              SizedBox(height: 10.h),
+              _buildHealthRow(Icons.favorite, '血压', _formatBloodPressure(health?['bloodPressure']), const Color(0xFFEF5350),multilineValue:true,),
+              SizedBox(height: 10.h),
+              _buildHealthRow(Icons.favorite, '心率', _formatHeartRate(health?['heartRate']), const Color(0xFFE91E63)),
             ],
           ),
         ),
@@ -515,6 +652,10 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
           valueListenable: _assistUiVersion,
           builder: (context, _, __) {
             final hasRemote = _remoteRenderer.srcObject != null;
+            final activeMember = _activeIndex != -1 ? _members[_activeIndex] : null;
+            final activeMemberId = activeMember != null ? activeMember['id'] : null;
+            final activeHealth = activeMemberId is int ? _healthByUserId[activeMemberId] : null;
+            final activeWeather = activeMemberId is int ? _weatherByUserId[activeMemberId] : null;
             return Scaffold(
               backgroundColor: Colors.black,
               body: SafeArea(
@@ -583,6 +724,30 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                                       _rtcStatusText,
                                       style: const TextStyle(color: Colors.white, fontSize: 12),
                                     ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Health info at top right
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text('健康信息', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 2),
+                                    Text(_formatHeartRate(activeHealth?['heartRate']), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text(_formatBloodPressure(activeHealth?['bloodPressure']), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text('睡眠: ${_formatSleepHours(activeHealth?['sleepHours'])}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text(_formatWeather(activeWeather), style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   ],
                                 ),
                               ),

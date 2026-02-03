@@ -46,6 +46,7 @@ class HealthApi {
 
   Future<dynamic> latest(int userId) => _http.get('/health/$userId/latest');
   Future<dynamic> history(int userId, Map<String, dynamic> params) => _http.get('/health/$userId/history', params: params);
+  Future<dynamic> sync(Map<String, dynamic> payload) => _http.post('/health/sync', data: payload);
 }
 
 class WeatherApi {
@@ -53,6 +54,7 @@ class WeatherApi {
   WeatherApi(this._http);
 
   Future<dynamic> get(int userId) => _http.get('/weather/$userId');
+  Future<dynamic> sync(Map<String, dynamic> payload) => _http.post('/weather/sync', data: payload);
 }
 
 class DevicesApi {

@@ -1,0 +1,7 @@
+{
+  "provider": "qweather",
+  "host": "qf5khvynut.re.qweatherapi.com",
+  "auth": "apikey",
+  "key": "",
+  "city": ""
+}
