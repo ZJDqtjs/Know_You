@@ -87,24 +87,23 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay> {
         return Stack(
           children: [
             widget.child,
-            // 浮窗按钮（固定在右下角）
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: FloatingActionButton(
-                  onPressed: service.isEnabled
-                      ? () {
-                          if (!_isDialogVisible) {
-                            _showVoiceAssistantDialog();
-                          }
-                        }
-                      : null,
-                  backgroundColor: service.isEnabled ? Colors.green : Colors.grey,
-                  child: const Icon(Icons.mic),
+            if (service.isEnabled)
+              // 浮窗按钮（固定在右下角）
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      if (!_isDialogVisible) {
+                        _showVoiceAssistantDialog();
+                      }
+                    },
+                    backgroundColor: Colors.green,
+                    child: const Icon(Icons.mic),
+                  ),
                 ),
               ),
-            ),
           ],
         );
       },

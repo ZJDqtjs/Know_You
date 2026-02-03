@@ -1,10 +1,19 @@
 package com.example.know_you
 
 import android.content.Intent
+import android.content.Context
 import android.os.Build
 import android.provider.Settings
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.os.SystemClock
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -15,6 +24,7 @@ class MainActivity : FlutterActivity() {
     private val FLOATING_BALL_CHANNEL = "com.example.know_you/floating_ball"
     private val SETTINGS_CHANNEL = "com.example.know_you/settings"
     private val SHIZUKU_CHANNEL = "com.example.know_you/shizuku"
+    private val STEP_COUNTER_CHANNEL = "com.example.know_you/step_counter"
     
     private val OVERLAY_PERMISSION_REQUEST_CODE = 1001
     private val TTS_CHECK_CODE = 1002
@@ -22,6 +32,9 @@ class MainActivity : FlutterActivity() {
     private lateinit var shizukuHelper: ShizukuHelper
     private lateinit var wirelessAdbHelper: WirelessAdbHelper
     private var shizukuMethodChannel: MethodChannel? = null
+
+    private lateinit var sensorManager: SensorManager
+    private val stepListener = StepCounterListener()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         if (Build.BRAND.equals("Xiaomi", ignoreCase = true)) {
@@ -38,6 +51,7 @@ class MainActivity : FlutterActivity() {
         super.onCreate(savedInstanceState)
         shizukuHelper = ShizukuHelper(this)
         wirelessAdbHelper = WirelessAdbHelper(this)
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -383,6 +397,66 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+        }
+
+        // Step counter channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, STEP_COUNTER_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getTodaySteps" -> {
+                    getTodaySteps(result)
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    private fun getTodaySteps(result: MethodChannel.Result) {
+        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)
+        if (sensor == null) {
+            result.error("NO_SENSOR", "Step counter sensor not available", null)
+            return
+        }
+
+        stepListener.requestOnce(result)
+        sensorManager.registerListener(stepListener, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    inner class StepCounterListener : SensorEventListener {
+        private var pendingResult: MethodChannel.Result? = null
+        private var received = false
+
+        fun requestOnce(result: MethodChannel.Result) {
+            pendingResult = result
+            received = false
+        }
+
+        override fun onSensorChanged(event: SensorEvent) {
+            if (received) return
+            received = true
+            sensorManager.unregisterListener(this)
+
+            val totalSteps = event.values[0].toLong()
+            val prefs = getSharedPreferences("step_counter", Context.MODE_PRIVATE)
+            val todayKey = SimpleDateFormat("yyyyMMdd", Locale.getDefault()).format(Date())
+
+            val savedDate = prefs.getString("date", null)
+            var base = prefs.getLong("baseSteps", -1L)
+
+            if (savedDate != todayKey || base < 0L || totalSteps < base) {
+                base = totalSteps
+                prefs.edit()
+                    .putString("date", todayKey)
+                    .putLong("baseSteps", base)
+                    .apply()
+            }
+
+            val todaySteps = (totalSteps - base).coerceAtLeast(0L)
+            pendingResult?.success(todaySteps)
+            pendingResult = null
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
+            // no-op
         }
     }
     

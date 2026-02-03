@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// 悬浮球朗读服务
 class FloatingBallService extends ChangeNotifier {
@@ -12,6 +13,7 @@ class FloatingBallService extends ChangeNotifier {
 
   FlutterTts? _tts;
   static const platform = MethodChannel('com.example.know_you/floating_ball');
+  static const _prefKeyEnabled = 'floating_ball_enabled';
   
   bool _isEnabled = false;
   bool _isReadMode = false;  // 是否处于朗读模式（点击悬浮球后）
@@ -24,6 +26,7 @@ class FloatingBallService extends ChangeNotifier {
   Offset _position = const Offset(20, 200);
   
   bool get isEnabled => _isEnabled;
+  bool get preferredEnabled => _isEnabled;
   bool get isReadMode => _isReadMode;
   bool get isSpeaking => _isSpeaking;
   bool get useNativeFloatingBall => _useNativeFloatingBall;
@@ -34,6 +37,9 @@ class FloatingBallService extends ChangeNotifier {
     if (_isInitialized) return;
     
     try {
+      final prefs = await SharedPreferences.getInstance();
+      _isEnabled = prefs.getBool(_prefKeyEnabled) ?? false;
+
       // 设置方法调用处理器，接收来自原生端的回调
       platform.setMethodCallHandler(_handleNativeCall);
       
@@ -175,6 +181,7 @@ class FloatingBallService extends ChangeNotifier {
         try {
           await platform.invokeMethod('startFloatingBall');
           _isEnabled = true;
+          await _saveEnabled(true);
           notifyListeners();
           print('Native floating ball started successfully');
         } catch (e) {
@@ -188,6 +195,7 @@ class FloatingBallService extends ChangeNotifier {
         try {
           await platform.invokeMethod('startFloatingBall');
           _isEnabled = true;
+          await _saveEnabled(true);
           notifyListeners();
           print('Native floating ball started (with permission request)');
         } catch (e) {
@@ -211,6 +219,7 @@ class FloatingBallService extends ChangeNotifier {
   void _enableFlutterFloatingBall(BuildContext context) {
     _isEnabled = true;
     _showOverlay(context);
+    _saveEnabled(true);
     notifyListeners();
   }
 
@@ -230,7 +239,17 @@ class FloatingBallService extends ChangeNotifier {
     }
     
     _tts?.stop();
+    await _saveEnabled(false);
     notifyListeners();
+  }
+
+  Future<void> _saveEnabled(bool enabled) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefKeyEnabled, enabled);
+    } catch (e) {
+      print('保存悬浮球开关失败: $e');
+    }
   }
 
   void toggleReadMode() {

@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:health/health.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
 import '../../common/api.dart';
 import '../../common/auth_provider.dart';
 import '../../common/programs_cache.dart';
@@ -123,18 +124,30 @@ class _IndexPageState extends State<IndexPage> {
         HealthDataAccess.READ,
       ];
 
-      final authorized = await _ensureHealthPermission(health, types, permissions, allowPrompt: allowPrompt);
-      if (!authorized) return;
+      // Steps: prefer native sensor on Android
+      int? steps;
+      try {
+        const stepChannel = MethodChannel('com.example.know_you/step_counter');
+        final nativeSteps = await stepChannel.invokeMethod<dynamic>('getTodaySteps');
+        if (nativeSteps != null) {
+          steps = int.tryParse(nativeSteps.toString());
+        }
+      } catch (_) {}
 
-      final steps = await health.getTotalStepsInInterval(startToday, now);
-      final sleepData = await health.getHealthDataFromTypes(
-        types: [
-          HealthDataType.SLEEP_ASLEEP,
-          HealthDataType.SLEEP_IN_BED,
-        ],
-        startTime: startSleep,
-        endTime: now,
-      );
+      // Sleep: still use health plugin
+      final authorized = await _ensureHealthPermission(health, types, permissions, allowPrompt: allowPrompt);
+      if (!authorized && steps == null) return;
+
+      final sleepData = authorized
+          ? await health.getHealthDataFromTypes(
+              types: [
+                HealthDataType.SLEEP_ASLEEP,
+                HealthDataType.SLEEP_IN_BED,
+              ],
+              startTime: startSleep,
+              endTime: now,
+            )
+          : <HealthDataPoint>[];
 
       Duration sleepDuration = Duration.zero;
       for (final d in sleepData) {

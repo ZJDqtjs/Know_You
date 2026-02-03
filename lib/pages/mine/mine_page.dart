@@ -9,6 +9,7 @@ import '../../common/shizuku_service.dart';
 import '../../common/voice_assistant_service.dart';
 import '../../widgets/common_card.dart';
 import '../voice_assistant_settings_page.dart';
+import 'floating_ball_settings_page.dart';
 import 'edit_profile_page.dart';
 import 'accessibility_keep_alive_page.dart';
 import 'post_manage_page.dart';
@@ -444,6 +445,41 @@ class _MinePageState extends State<MinePage> {
                               );
                             },
                           ),
+                        ],
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right, color: Colors.grey),
+                  ],
+                ),
+              ),
+            ),
+
+            // 悬浮球设置入口
+            CommonCard(
+              child: InkWell(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const FloatingBallSettingsPage()),
+                  );
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(8.w),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.bubble_chart, color: Colors.blue),
+                    ),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('悬浮球设置', style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500)),
+                          Text('屏幕朗读与语音助手悬浮球', style: TextStyle(fontSize: 12.sp, color: Colors.grey)),
                         ],
                       ),
                     ),

@@ -36,7 +36,7 @@ class _MainPageState extends State<MainPage> {
       
       final service = Provider.of<FloatingBallService>(context, listen: false);
       
-      if (!service.isEnabled) {
+      if (!service.isEnabled && service.preferredEnabled) {
         // 检查无障碍服务
         await _checkAccessibilityService();
         service.enable(context);
@@ -194,14 +194,6 @@ class _MainPageState extends State<MainPage> {
               ),
             ],
           ),
-          // 悬浮球开关按钮（当悬浮球未启用时显示）
-          floatingActionButton: !floatingService.isEnabled
-              ? FloatingActionButton.small(
-                  onPressed: () => floatingService.enable(context),
-                  backgroundColor: Colors.green,
-                  child: const Icon(Icons.record_voice_over, color: Colors.white),
-                )
-              : null,
         ),
       ),
     );
