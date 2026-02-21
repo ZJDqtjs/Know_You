@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <!-- Background -->
+  <rect width="800" height="400" fill="#fafafa" />
+
+  <!-- Title -->
+  <text x="400" y="30" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">Multimodal Prompt Construction</text>
+
+  <!-- Container for the Prompt Structure -->
+  <g transform="translate(100, 80)">
+    <rect x="0" y="0" width="600" height="250" rx="10" fill="#fff" stroke="#333" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="300" y="-10" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#555">OpenAI-Compatible Message Format</text>
+    
+    <!-- System Role -->
+    <g transform="translate(20, 20)">
+      <rect x="0" y="0" width="560" height="60" rx="5" fill="#e3f2fd" stroke="#2196f3"/>
+      <text x="20" y="25" font-family="sans-serif" font-size="12" font-weight="bold" fill="#1565c0">Role: System</text>
+      <text x="20" y="45" font-family="sans-serif" font-size="11" fill="#1e88e5">Rules: output JSON only, allowed actions {Tap, Swipe...}, error handling policies.</text>
+    </g>
+
+    <!-- User Role -->
+    <g transform="translate(20, 90)">
+      <rect x="0" y="0" width="560" height="140" rx="5" fill="#f3e5f5" stroke="#ab47bc"/>
+      <text x="20" y="25" font-family="sans-serif" font-size="12" font-weight="bold" fill="#6a1b9a">Role: User (Multimodal)</text>
+      
+      <!-- Text Part -->
+      <g transform="translate(20, 35)">
+        <rect x="0" y="0" width="250" height="90" rx="5" fill="#fff"/>
+        <text x="10" y="20" font-family="sans-serif" font-size="11" font-weight="bold" fill="#333">Text Content:</text>
+        <text x="10" y="40" font-family="sans-serif" font-size="10" fill="#555">- Task: "Order congee from Meituan"</text>
+        <text x="10" y="55" font-family="sans-serif" font-size="10" fill="#555">- App: "WeChat" (Foreground)</text>
+        <text x="10" y="70" font-family="sans-serif" font-size="10" fill="#555">- Device: Android 12</text>
+      </g>
+
+      <!-- Image Part -->
+      <g transform="translate(290, 35)">
+        <rect x="0" y="0" width="250" height="90" rx="5" fill="#fff"/>
+        <text x="10" y="20" font-family="sans-serif" font-size="11" font-weight="bold" fill="#333">Image Content:</text>
+        <text x="10" y="40" font-family="sans-serif" font-size="10" fill="#555">Base64 Encoded Screenshot</text>
+        <!-- Mock Screenshot Icon -->
+        <rect x="80" y="50" width="40" height="30" fill="#ddd" stroke="#999"/>
+        <rect x="90" y="55" width="20" height="5" fill="#999"/>
+        <path d="M85 70 L95 60 L105 70" fill="#bbb"/>
+      </g>
+
+      <text x="280" y="80" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#ab47bc">+</text>
+    </g>
+  </g>
+
+  <!-- Output Arrow -->
+  <path d="M400 330 L400 370" stroke="#333" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- LLM -->
+  <rect x="300" y="350" width="200" height="40" rx="5" fill="#333"/>
+  <text x="400" y="375" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#fff">VLM Inference</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#333" />
+    </marker>
+  </defs>
+</svg>

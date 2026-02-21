@@ -1,8 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'app_config.dart';
+
 class HttpService {
-  static const String baseUrl = 'http://8.155.162.219:8084/api/v1';
   static const String _accessTokenKey = 'auth_access_token';
   static const String _refreshTokenKey = 'auth_refresh_token';
 
@@ -17,15 +18,18 @@ class HttpService {
   }
 
   HttpService._internal() {
+    final config = AppConfig.currentOrDefault;
     _dio = Dio(BaseOptions(
-      baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 10),
-      receiveTimeout: const Duration(seconds: 10),
+      baseUrl: config.apiBaseUrl,
+      connectTimeout: config.connectTimeout,
+      receiveTimeout: config.receiveTimeout,
       contentType: 'application/json',
     ));
 
     _dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) async {
+        // Ensure baseUrl always follows the JSON config
+        options.baseUrl = AppConfig.currentOrDefault.apiBaseUrl;
         final token = await _getToken();
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
@@ -102,7 +106,7 @@ class HttpService {
     _isRefreshing = true;
     try {
       // Create a new Dio instance to avoid interceptor loop
-      final tokenDio = Dio(BaseOptions(baseUrl: baseUrl));
+      final tokenDio = Dio(BaseOptions(baseUrl: AppConfig.currentOrDefault.apiBaseUrl));
       final response = await tokenDio.post('/auth/refresh', data: {'refreshToken': refreshToken});
       
       if (response.data['code'] == 0) {

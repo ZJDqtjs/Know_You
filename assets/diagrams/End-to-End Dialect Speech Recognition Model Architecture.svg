@@ -1,0 +1,86 @@
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+ <!-- Background -->
+ <!-- Title -->
+ <!-- Input Section -->
+ <!-- Arrow 1 -->
+ <!-- Audio Encoder -->
+ <!-- Arrow 2 -->
+ <!-- Audio Adaptor -->
+ <!-- Arrow 3 -->
+ <!-- LLM Section -->
+ <!-- Bottom: Processing Flow -->
+ <!-- Arrow Marker Definition -->
+ <defs>
+  <marker markerUnits="strokeWidth" orient="auto" refY="3" refX="9" markerHeight="10" markerWidth="10" id="arrow">
+   <path id="svg_1" fill="#666" d="m0,0l0,6l9,-3l-9,-3z"/>
+  </marker>
+ </defs>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_2" fill="#f8f9fa" height="500" width="800"/>
+  <text id="svg_3" fill="#333" text-anchor="middle" font-weight="bold" font-size="20" font-family="sans-serif" y="40" x="400">End-to-End Dialect Speech Recognition Model Architecture</text>
+  <g id="svg_4">
+   <rect id="svg_5" stroke-width="2" stroke="#2196f3" fill="#e3f2fd" rx="10" height="80" width="120" y="100" x="50"/>
+   <text id="svg_6" fill="#333" text-anchor="middle" font-size="14" font-family="sans-serif" y="135" x="110">Audio Input</text>
+   <text id="svg_7" fill="#666" text-anchor="middle" font-size="12" font-family="sans-serif" y="155" x="110">(Dialect/Accent)</text>
+  </g>
+  <path id="svg_8" marker-end="url(#arrow)" stroke-width="2" stroke="#666" d="m170,140l50,0"/>
+  <g id="svg_9">
+   <rect id="svg_10" stroke-width="2" stroke="#ff9800" fill="#fff3e0" rx="10" height="120" width="160" y="80" x="220"/>
+   <text id="svg_11" fill="#333" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="110" x="300">Audio Encoder</text>
+   <rect id="svg_12" fill="#ffe0b2" rx="5" height="20" width="120" y="130" x="240"/>
+   <text id="svg_13" fill="#555" text-anchor="middle" font-size="11" font-family="sans-serif" y="145" x="300">Fbank Extraction</text>
+   <rect id="svg_14" fill="#ffe0b2" rx="5" height="20" width="120" y="160" x="240"/>
+   <text id="svg_15" fill="#555" text-anchor="middle" font-size="11" font-family="sans-serif" y="175" x="300">Temporal Modeling</text>
+  </g>
+  <path id="svg_16" marker-end="url(#arrow)" stroke-width="2" stroke="#666" d="m380,140l50,0"/>
+  <g id="svg_17">
+   <rect id="svg_18" stroke-width="2" stroke="#4caf50" fill="#e8f5e9" rx="10" height="80" width="140" y="100" x="430"/>
+   <text id="svg_19" fill="#333" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="135" x="500">Audio Adaptor</text>
+   <text id="svg_20" fill="#555" text-anchor="middle" font-size="11" font-family="sans-serif" y="155" x="500">Cross-modal Align</text>
+  </g>
+  <path id="svg_21" marker-end="url(#arrow)" stroke-width="2" stroke="#666" d="m570,140l50,0"/>
+  <g id="svg_22">
+   <rect id="svg_23" stroke-width="2" stroke="#9c27b0" fill="#f3e5f5" rx="10" height="160" width="140" y="60" x="620"/>
+   <text id="svg_24" fill="#333" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="90" x="690">LLM</text>
+   <text id="svg_25" fill="#555" text-anchor="middle" font-size="11" font-family="sans-serif" y="110" x="690">Text Generation</text>
+   <!-- Inputs to LLM -->
+   <rect id="svg_26" fill="#e1bee7" rx="5" height="20" width="100" y="130" x="640"/>
+   <text id="svg_27" fill="#555" text-anchor="middle" font-size="10" font-family="sans-serif" y="145" x="690">Prompt Inst.</text>
+   <rect id="svg_28" fill="#e1bee7" rx="5" height="20" width="100" y="155" x="640"/>
+   <text id="svg_29" fill="#555" text-anchor="middle" font-size="10" font-family="sans-serif" y="170" x="690">Audio Embeds</text>
+   <rect id="svg_30" fill="#e1bee7" rx="5" height="20" width="100" y="180" x="640"/>
+   <text id="svg_31" fill="#555" text-anchor="middle" font-size="10" font-family="sans-serif" y="195" x="690">Hotwords</text>
+  </g>
+  <g stroke="null" id="svg_32">
+   <!-- Legend/Explanation box -->
+   <rect stroke="#ccc" id="svg_33" stroke-dasharray="5,5" fill="white" rx="10" height="180" width="747.7044" y="260" x="50"/>
+   <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_34" fill="#333" font-weight="bold" font-size="16" font-family="sans-serif" y="290" x="70">Core Processing Pipeline:</text>
+   <g stroke="null" id="svg_35">
+    <circle stroke="null" id="svg_36" fill="#2196f3" r="15" cy="325" cx="105.51935"/>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_37" font-weight="bold" fill="white" text-anchor="middle" y="330" x="105">1</text>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_38" font-size="14" font-family="sans-serif" y="330" x="130">Signal: Audio → Fbank Features</text>
+   </g>
+   <g stroke="null" id="svg_39">
+    <circle stroke="null" id="svg_40" fill="#ff9800" r="15" cy="365" cx="105.51935"/>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_41" font-weight="bold" fill="white" text-anchor="middle" y="370" x="105">2</text>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_42" font-size="14" font-family="sans-serif" y="370" x="130">Encode: Acoustic Features → High-level Representation</text>
+   </g>
+   <g stroke="null" id="svg_43">
+    <circle stroke="null" id="svg_44" fill="#4caf50" r="15" cy="405" cx="105.51935"/>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_45" font-weight="bold" fill="white" text-anchor="middle" y="410" x="105">3</text>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_46" font-size="14" font-family="sans-serif" y="410" x="130">Bridge: Align dimensions to LLM embedding space</text>
+   </g>
+   <g stroke="null" id="svg_47">
+    <circle stroke="null" id="svg_48" fill="#9c27b0" r="15" cy="325" cx="468.91876"/>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_49" font-weight="bold" fill="white" text-anchor="middle" y="330" x="465">4</text>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_50" font-size="14" font-family="sans-serif" y="330" x="490">Generate: Context + Audio + Instruction → Text</text>
+   </g>
+   <g stroke="null" id="svg_51">
+    <circle stroke="null" id="svg_52" fill="#607d8b" r="15" cy="388" cx="473.91876"/>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_53" font-weight="bold" fill="white" text-anchor="middle" y="393" x="469.95323">5</text>
+    <text transform="matrix(1.00944 0 0 1 -0.47214 0)" stroke="null" id="svg_54" font-size="14" font-family="sans-serif" y="396" x="489.00935">Optimize: CTC Loss + Hotwords + ITN Norm</text>
+   </g>
+  </g>
+ </g>
+</svg>

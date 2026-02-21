@@ -9,6 +9,7 @@ import 'package:record/record.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 
 class PostDetailPage extends StatefulWidget {
   final Map<String, dynamic> post;
@@ -40,7 +41,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
   final List<Map<String, dynamic>> _comments = [];
   late final AudioRecorder _commentRecorder;
   late final AudioPlayer _durationProbe;
-  static const String _asrBaseUrl = 'http://192.168.1.7:8000';
   static const String _languagePrefKey = 'asr_language';
 
   @override
@@ -66,11 +66,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 
   String _resolveUrl(String? path) {
-    if (path == null) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const baseUrl = 'http://8.155.162.219:8084'; // From http.dart
-    if (path.startsWith('/')) return '$baseUrl$path';
-    return '$baseUrl/$path';
+    return AppConfig.currentOrDefault.resolveHttpUrl(path);
   }
 
   int? get _postId {
@@ -350,7 +346,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
   Future<void> _recognizeCommentAudio(String path) async {
     setState(() => _isRecognizingComment = true);
     try {
-      final dio = Dio(BaseOptions(baseUrl: _asrBaseUrl, connectTimeout: const Duration(seconds: 30)));
+      final asrBaseUrl = AppConfig.currentOrDefault.asrBaseUrl;
+      if (asrBaseUrl == null || asrBaseUrl.isEmpty) return;
+      final dio = Dio(BaseOptions(baseUrl: asrBaseUrl, connectTimeout: const Duration(seconds: 30)));
       final form = FormData.fromMap({
         'file': await MultipartFile.fromFile(path, filename: 'comment_audio.mp3'),
         'language': _asrLanguage ?? '中文',

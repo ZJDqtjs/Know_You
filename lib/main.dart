@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'common/auth_provider.dart';
+import 'common/app_config.dart';
 import 'common/notification_service.dart';
 import 'common/floating_ball_service.dart';
 import 'common/shizuku_service.dart';
@@ -11,6 +12,9 @@ import 'pages/main_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load frontend API configuration (single source of truth)
+  await AppConfig.load();
   
   // 初始化 Shizuku 服务（更早初始化，给它时间自动启用无障碍）
   final shizukuService = ShizukuService();

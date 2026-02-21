@@ -5,14 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'http.dart';
 import 'api.dart';
 import 'webrtc_service.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'app_config.dart';
 
 class NotificationService extends ChangeNotifier {
   WebSocketChannel? _channel;
-  static const String _wsUrl = 'ws://8.155.162.219:8084/ws';
   Timer? _reconnectTimer;
   bool _isConnected = false;
   WebRTCService? _screenSharer;
@@ -42,9 +41,11 @@ class NotificationService extends ChangeNotifier {
 
     if (_isConnected) return;
 
-    print('[Notification] Connecting to $_wsUrl');
+    final wsUrl = (await AppConfig.load()).wsUrl;
+
+    print('[Notification] Connecting to $wsUrl');
     try {
-      _channel = WebSocketChannel.connect(Uri.parse(_wsUrl));
+      _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _isConnected = true;
 
       _channel!.stream.listen((message) {

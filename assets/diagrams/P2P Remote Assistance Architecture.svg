@@ -1,0 +1,57 @@
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+ <!-- Background -->
+
+ <!-- Title -->
+ <!-- Left: Assistant (Child/Helper) -->
+ <!-- Right: Elder (Host/Sharer) -->
+ <!-- Middle: Cloud/Network -->
+ <!-- Data Flows -->
+ <!-- Signaling -->
+ <!-- Video Stream -->
+ <!-- Control Stream -->
+ <!-- Markers (Removed for compatibility) -->
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_1" fill="#f4f5f7" height="500" width="800"/>
+  <text id="svg_2" fill="#333" text-anchor="middle" font-weight="bold" font-size="20" font-family="sans-serif" y="30" x="400">P2P Remote Assistance Architecture</text>
+  <g id="svg_3">
+   <rect id="svg_4" stroke-width="2" stroke="#2196f3" fill="#ddeeff" rx="10" height="300" width="180" y="100" x="50"/>
+   <text id="svg_5" fill="#0d47a1" text-anchor="middle" font-weight="bold" font-size="16" font-family="sans-serif" y="130" x="140">Assistant (Viewer)</text>
+   <!-- Components -->
+   <rect id="svg_6" stroke="#90caf9" fill="#fff" height="40" width="140" y="160" x="70"/>
+   <text id="svg_7" text-anchor="middle" font-size="12" font-family="sans-serif" y="185" x="140">Gesture Capture</text>
+   <rect id="svg_8" fill="#212121" height="100" width="140" y="220" x="70"/>
+   <text id="svg_9" fill="#fff" text-anchor="middle" font-size="12" font-family="sans-serif" y="275" x="140">Video Render</text>
+   <rect id="svg_10" stroke="#90caf9" fill="#fff" height="40" width="140" y="340" x="70"/>
+   <text id="svg_11" text-anchor="middle" font-size="12" font-family="sans-serif" y="365" x="140">WebRTC Client</text>
+  </g>
+  <g id="svg_12">
+   <rect id="svg_13" stroke-width="2" stroke="#ff9800" fill="#fff3e0" rx="10" height="300" width="180" y="100" x="570"/>
+   <text id="svg_14" fill="#e65100" text-anchor="middle" font-weight="bold" font-size="16" font-family="sans-serif" y="130" x="660">Elder (Sharer)</text>
+   <!-- Components -->
+   <rect id="svg_15" stroke="#ffcc80" fill="#fff" height="40" width="140" y="160" x="590"/>
+   <text id="svg_16" text-anchor="middle" font-size="12" font-family="sans-serif" y="185" x="660">Screen Capture</text>
+   <rect id="svg_17" stroke="#ffcc80" fill="#fff" height="40" width="140" y="220" x="590"/>
+   <text id="svg_18" text-anchor="middle" font-size="12" font-family="sans-serif" y="245" x="660">Action Executor</text>
+   <text id="svg_19" fill="#555" text-anchor="middle" font-size="9" font-family="sans-serif" y="255" x="660">(Accessibility Service)</text>
+   <rect id="svg_20" stroke="#ffcc80" fill="#fff" height="40" width="140" y="340" x="590"/>
+   <text id="svg_21" text-anchor="middle" font-size="12" font-family="sans-serif" y="365" x="660">WebRTC Server</text>
+  </g>
+  <g id="svg_22">
+   <ellipse id="svg_23" stroke-dasharray="5,5" stroke="#9e9e9e" fill="#e0e0e0" ry="40" rx="80" cy="75" cx="331"/>
+   <text id="svg_24" fill="#616161" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="70" x="331">Signaling Server</text>
+   <text id="svg_25" fill="#757575" text-anchor="middle" font-size="11" font-family="sans-serif" y="90" x="331">WebSocket / STUN</text>
+  </g>
+  <path id="svg_26" stroke-dasharray="4,4" stroke-width="2" stroke="#9e9e9e" d="m140,100l110,-20"/>
+  <path id="svg_27" stroke-dasharray="4,4" stroke-width="2" stroke="#9e9e9e" d="m570,100l-190,-20"/>
+  <text id="svg_28" fill="#757575" text-anchor="middle" font-size="10" font-family="sans-serif" y="128" x="341">Session Setup (SDP)</text>
+  <path id="svg_29" stroke-width="4" stroke="#f44336" d="m570,280l-332,0"/>
+  <polygon id="svg_30" fill="#f44336" points="248,280 238,272 238,288"/>
+  <text id="svg_31" fill="#d32f2f" text-anchor="middle" font-weight="bold" font-size="12" font-family="sans-serif" y="270" x="400">Video Stream (P2P)</text>
+  <text id="svg_32" fill="#d32f2f" text-anchor="middle" font-size="10" font-family="sans-serif" y="295" x="400">H.264 / VP9</text>
+  <path id="svg_33" stroke-width="3" stroke="#4caf50" d="m230,200l332,40"/>
+  <polygon id="svg_34" fill="#4caf50" points="570,240 560,234 560,246"/>
+  <text id="svg_35" fill="#2e7d32" text-anchor="middle" font-weight="bold" font-size="12" font-family="sans-serif" y="191" x="409">Control Commands</text>
+  <text id="svg_36" fill="#2e7d32" text-anchor="middle" font-size="10" font-family="sans-serif" y="209" x="422">{ x: 0.5, y: 0.2, action: 'tap' }</text>
+ </g>
+</svg>

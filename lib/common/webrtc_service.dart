@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
-import 'http.dart';
 import 'api.dart';
+import 'app_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum WebRTCConnectionState {
@@ -97,8 +97,9 @@ class WebRTCService {
       throw Exception('No access token');
     }
 
-    // Replace http/https with ws/wss
-    String wsBaseUrl = HttpService.baseUrl.replaceFirst(RegExp(r'^http'), 'ws');
+    // Always load from assets/config/api_config.json (single source of truth)
+    final apiBaseUrl = (await AppConfig.load()).apiBaseUrl;
+    final wsBaseUrl = apiBaseUrl.replaceFirst(RegExp(r'^http'), 'ws');
     final url = '$wsBaseUrl/screen/$_sessionId/stream?token=$token';
     
     print('[WebRTC] Connecting to WebSocket: $url');

@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+  <!-- Background -->
+  <rect width="800" height="450" fill="#fff" />
+  
+  <!-- Title -->
+  <text x="400" y="30" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">Cross-Platform Screen Reader Workflow</text>
+
+  <!-- Styles -->
+  <defs>
+    <style>
+      .box { fill: #f0f4c3; stroke: #afb42b; stroke-width: 2; rx: 8; }
+      .start-end { fill: #ffecb3; stroke: #ffb300; stroke-width: 2; rx: 20; }
+      .decision { fill: #e1bee7; stroke: #8e24aa; stroke-width: 2; rx: 0; transform: rotate(45deg); }
+      .text { font-family: sans-serif; font-size: 11px; text-anchor: middle; fill: #333; }
+      .label { font-family: sans-serif; font-size: 14px; font-weight: bold; text-anchor: middle; fill: #333; }
+      .arrow { stroke: #666; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- User Action -->
+  <g transform="translate(50, 180)">
+    <rect class="start-end" x="0" y="0" width="120" height="60"/>
+    <text x="60" y="25" class="label">User Touch</text>
+    <text x="60" y="45" class="text">(Floating Ball/Tap)</text>
+  </g>
+
+  <!-- Coord Calc -->
+  <g transform="translate(220, 180)">
+    <rect class="box" x="0" y="0" width="140" height="60" fill="#b3e5fc" stroke="#03a9f4"/>
+    <text x="70" y="25" class="label">Coordinate Map</text>
+    <text x="70" y="45" class="text">Screen (x,y) -> Norm</text>
+  </g>
+
+  <!-- Accessibility Tree -->
+  <g transform="translate(410, 80)">
+    <rect class="box" x="0" y="0" width="160" height="80"/>
+    <text x="80" y="30" class="label">Accessibility Node</text>
+    <text x="80" y="50" class="text">Search Node Tree</text>
+    <text x="80" y="65" class="text">Hit Test (x,y)</text>
+  </g>
+
+  <!-- OCR Fallback -->
+  <g transform="translate(410, 260)">
+    <rect class="box" x="0" y="0" width="160" height="80" fill="#ffccbc" stroke="#ff5722"/>
+    <text x="80" y="30" class="label">Visual Fallback</text>
+    <text x="80" y="50" class="text">Flutter Widget Tree</text>
+    <text x="80" y="65" class="text">or OCR Snapshot</text>
+  </g>
+
+  <!-- TTS Output -->
+  <g transform="translate(630, 180)">
+    <rect class="start-end" x="0" y="0" width="120" height="60" fill="#c8e6c9" stroke="#4caf50"/>
+    <text x="60" y="25" class="label">TTS Output</text>
+    <text x="60" y="45" class="text">Speak Text</text>
+  </g>
+
+  <!-- Connectors -->
+  <path d="M170 210 L220 210" class="arrow"/>
+  
+  <!-- Split paths -->
+  <path d="M360 210 L385 210 L385 120 L410 120" class="arrow"/>
+  <text x="390" y="110" class="text" fill="#666">Primary: Sys API</text>
+
+  <path d="M360 210 L385 210 L385 300 L410 300" class="arrow"/>
+  <text x="390" y="290" class="text" fill="#666">Fallback: Visual</text>
+
+  <!-- Merge paths -->
+  <path d="M570 120 L595 120 L595 200 L630 200" class="arrow"/>
+  <path d="M570 300 L595 300 L595 220 L630 220" class="arrow"/>
+
+  <!-- Logic label -->
+  <text x="600" y="170" class="text" font-weight="bold">Text Found?</text>
+
+</svg>

@@ -1,0 +1,54 @@
+<svg width="800" height="500" xmlns="http://www.w3.org/2000/svg">
+ <!-- Background -->
+ <!-- Title -->
+ <!-- Client -->
+ <!-- Server Boundary -->
+ <!-- FastAPI -->
+ <!-- Model Engine -->
+ <!-- Flows inside server -->
+ <defs>
+  <marker markerUnits="strokeWidth" orient="auto" refY="3" refX="9" markerHeight="10" markerWidth="10" id="arrow">
+   <path id="svg_1" fill="#333" d="m0,0l0,6l9,-3l-9,-3z"/>
+  </marker>
+ </defs>
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_2" fill="#eef2f3" height="500" width="800"/>
+  <text id="svg_3" fill="#37474f" text-anchor="middle" font-weight="bold" font-size="20" font-family="sans-serif" y="40" x="400">API Service Flow: FastAPI + SSE</text>
+  <g id="svg_4">
+   <rect stroke="#546e7a" id="svg_5" stroke-width="2" fill="#b0bec5" rx="10" height="295" width="120" y="150" x="3"/>
+   <text id="svg_6" fill="#263238" text-anchor="middle" font-weight="bold" font-size="16" font-family="sans-serif" y="180" x="63">Client</text>
+   <text id="svg_7" fill="#37474f" text-anchor="middle" font-size="12" font-family="sans-serif" y="200" x="63">App / Web</text>
+   <!-- Request Out -->
+   <path id="svg_8" marker-end="url(#arrow)" stroke-width="2" stroke="#263238" d="m123,230l180,0"/>
+   <text id="svg_9" fill="#263238" text-anchor="middle" font-size="11" font-family="sans-serif" y="220" x="213">POST /run_task</text>
+   <text id="svg_10" fill="#546e7a" text-anchor="middle" font-size="10" font-family="sans-serif" y="250" x="213">{"task": "clean cache"}</text>
+   <!-- SSE In -->
+   <path id="svg_11" marker-end="url(#arrow)" stroke-dasharray="5,3" stroke-width="2" stroke="#009688" d="m303,330l-180,0"/>
+   <text id="svg_12" fill="#00796b" text-anchor="middle" font-size="11" font-family="sans-serif" y="320" x="213">SSE: event stream</text>
+   <!-- Final Response In -->
+   <path id="svg_13" marker-end="url(#arrow)" stroke-width="2" stroke="#009688" d="m303,430l-180,0"/>
+   <text id="svg_14" fill="#00796b" text-anchor="middle" font-size="11" font-family="sans-serif" y="420" x="213">Final Result</text>
+  </g>
+  <rect id="svg_15" stroke-width="2" stroke="#cfd8dc" fill="#fff" rx="15" height="400" width="450" y="50" x="300"/>
+  <text id="svg_16" fill="#90a4ae" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="480" x="525">Server Infra</text>
+  <g id="svg_17">
+   <rect id="svg_18" stroke-width="2" stroke="#009688" fill="#e0f2f1" rx="10" height="340" width="140" y="80" x="320"/>
+   <text id="svg_19" fill="#00695c" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="110" x="390">FastAPI</text>
+   <text id="svg_20" fill="#004d40" text-anchor="middle" font-size="11" font-family="sans-serif" y="140" x="390">Auth / Val</text>
+   <rect id="svg_21" stroke="#80cbc4" fill="#fff" height="200" width="100" y="160" x="340"/>
+   <text id="svg_22" fill="#004d40" text-anchor="middle" font-size="11" font-family="sans-serif" y="180" x="390">Async Runner</text>
+  </g>
+  <g id="svg_23">
+   <rect id="svg_24" stroke-width="2" stroke="#673ab7" fill="#ede7f6" rx="10" height="120" width="160" y="150" x="560"/>
+   <text id="svg_25" fill="#4527a0" text-anchor="middle" font-weight="bold" font-size="14" font-family="sans-serif" y="180" x="640">Model Engine</text>
+   <text id="svg_26" fill="#512da8" text-anchor="middle" font-size="11" font-family="sans-serif" y="200" x="640">Step-by-step Loop</text>
+   <!-- Loop -->
+   <path id="svg_27" stroke-width="2" stroke="#673ab7" fill="none" d="m680,210a20,20 0 1 1 0,40a20,20 0 1 1 0,-40"/>
+  </g>
+  <path id="svg_28" marker-end="url(#arrow)" stroke-width="2" stroke="#333" d="m420,120l140,60"/>
+  <text id="svg_29" fill="#333" font-size="10" font-family="sans-serif" y="145" x="493">Invoke Task</text>
+  <path id="svg_30" marker-end="url(#arrow)" stroke-dasharray="5,3" stroke-width="2" stroke="#009688" d="m560,210l-140,40"/>
+  <text id="svg_31" text-anchor="middle" fill="#00796b" font-size="10" font-family="sans-serif" y="220" x="485">Step Event</text>
+ </g>
+</svg>

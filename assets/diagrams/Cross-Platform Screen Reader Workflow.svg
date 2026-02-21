@@ -1,0 +1,59 @@
+<svg width="800" height="450" xmlns="http://www.w3.org/2000/svg">
+ <!-- Background -->
+ <!-- Title -->
+ <!-- Styles -->
+ <defs>
+  <marker orient="auto" refY="3.5" refX="10" markerHeight="7" markerWidth="10" id="arrowhead">
+   <polygon id="svg_1" fill="#666" points="0 0, 10 3.5, 0 7"/>
+  </marker>
+ </defs>
+ <!-- User Action -->
+ <!-- Coord Calc -->
+ <!-- Accessibility Tree -->
+ <!-- OCR Fallback -->
+ <!-- TTS Output -->
+ <!-- Connectors -->
+ <!-- Split paths -->
+ <!-- Merge paths -->
+ <!-- Logic label -->
+ <g>
+  <title>Layer 1</title>
+  <rect id="svg_2" fill="#fff" height="450" width="800"/>
+  <text id="svg_3" fill="#333" text-anchor="middle" font-weight="bold" font-size="20" font-family="sans-serif" y="30" x="400">Cross-Platform Screen Reader Workflow</text>
+  <g id="svg_4">
+   <rect id="svg_5" rx="20" stroke-width="2" stroke="#ffb300" fill="#ffecb3" height="60" width="120" y="180" x="50" class="start-end"/>
+   <text id="svg_6" fill="#333" text-anchor="middle" font-weight="bold" font-size="14px" font-family="sans-serif" class="label" y="205" x="110">User Touch</text>
+   <text id="svg_7" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="225" x="110">(Floating Ball/Tap)</text>
+  </g>
+  <g id="svg_8">
+   <rect id="svg_9" rx="8" stroke-width="2" stroke="#afb42b" fill="#f0f4c3" height="60" width="140" y="180" x="220" class="box"/>
+   <text id="svg_10" fill="#333" text-anchor="middle" font-weight="bold" font-size="14px" font-family="sans-serif" class="label" y="205" x="290">Coordinate Map</text>
+   <text id="svg_11" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="225" x="290">Screen (x,y) -&gt; Norm</text>
+  </g>
+  <g id="svg_12">
+   <rect id="svg_13" rx="8" stroke-width="2" stroke="#afb42b" fill="#f0f4c3" height="80" width="160" y="80" x="410" class="box"/>
+   <text id="svg_14" fill="#333" text-anchor="middle" font-weight="bold" font-size="14px" font-family="sans-serif" class="label" y="110" x="490">Accessibility Node</text>
+   <text id="svg_15" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="130" x="490">Search Node Tree</text>
+   <text id="svg_16" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="145" x="490">Hit Test (x,y)</text>
+  </g>
+  <g id="svg_17">
+   <rect id="svg_18" rx="8" stroke-width="2" stroke="#afb42b" fill="#f0f4c3" height="80" width="160" y="260" x="410" class="box"/>
+   <text id="svg_19" fill="#333" text-anchor="middle" font-weight="bold" font-size="14px" font-family="sans-serif" class="label" y="290" x="490">Visual Fallback</text>
+   <text id="svg_20" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="310" x="490">Flutter Widget Tree</text>
+   <text id="svg_21" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="325" x="490">or OCR Snapshot</text>
+  </g>
+  <g id="svg_22">
+   <rect id="svg_23" rx="20" stroke-width="2" stroke="#ffb300" fill="#ffecb3" height="60" width="120" y="180" x="630" class="start-end"/>
+   <text id="svg_24" fill="#333" text-anchor="middle" font-weight="bold" font-size="14px" font-family="sans-serif" class="label" y="205" x="690">TTS Output</text>
+   <text id="svg_25" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" class="text" y="225" x="690">Speak Text</text>
+  </g>
+  <path id="svg_26" marker-end="url(#arrowhead)" fill="none" stroke-width="2" stroke="#666" class="arrow" d="m170,210l50,0"/>
+  <path id="svg_27" marker-end="url(#arrowhead)" fill="none" stroke-width="2" stroke="#666" class="arrow" d="m360,210l25,0l0,-90l25,0"/>
+  <text id="svg_28" text-anchor="middle" font-size="11px" font-family="sans-serif" fill="#333" class="text" y="109" x="364">Primary: Sys API</text>
+  <path id="svg_29" marker-end="url(#arrowhead)" fill="none" stroke-width="2" stroke="#666" class="arrow" d="m360,210l25,0l0,90l25,0"/>
+  <text id="svg_30" text-anchor="middle" font-size="11px" font-family="sans-serif" fill="#333" class="text" y="323" x="367">Fallback: Visual</text>
+  <path id="svg_31" marker-end="url(#arrowhead)" fill="none" stroke-width="2" stroke="#666" class="arrow" d="m570,120l25,0l0,80l35,0"/>
+  <path id="svg_32" marker-end="url(#arrowhead)" fill="none" stroke-width="2" stroke="#666" class="arrow" d="m570,300l25,0l0,-80l35,0"/>
+  <text id="svg_33" fill="#333" text-anchor="middle" font-size="11px" font-family="sans-serif" font-weight="bold" class="text" y="154" x="632">Text Found?</text>
+ </g>
+</svg>

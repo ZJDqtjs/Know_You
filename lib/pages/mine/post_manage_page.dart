@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 
 class PostManagePage extends StatefulWidget {
   const PostManagePage({super.key});
@@ -25,11 +26,7 @@ class _PostManagePageState extends State<PostManagePage> {
   }
 
   String _resolveUrl(String? path) {
-    if (path == null) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const baseUrl = 'http://8.155.162.219:8084';
-    if (path.startsWith('/')) return '$baseUrl$path';
-    return '$baseUrl/$path';
+    return AppConfig.currentOrDefault.resolveHttpUrl(path);
   }
 
   Future<void> _fetchPosts({bool refresh = false}) async {

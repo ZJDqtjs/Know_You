@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400">
+  <!-- Background -->
+  <rect width="800" height="400" fill="#fff" />
+
+  <!-- Title -->
+  <text x="400" y="30" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#333">Sensitive Operation Safe-Guard Flow</text>
+
+  <!-- Diagram Elements -->
+  
+  <!-- Step 1: LLM Suggestion -->
+  <g transform="translate(50, 150)">
+    <rect x="0" y="0" width="140" height="80" rx="10" fill="#e3f2fd" stroke="#2196f3" stroke-width="2"/>
+    <text x="70" y="35" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#0d47a1">LLM Suggestion</text>
+    <text x="70" y="55" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#1976d2">Action: Pay/Delete</text>
+  </g>
+
+  <!-- Arrow 1 -->
+  <path d="M190 190 L230 190" stroke="#666" stroke-width="2" fill="none"/>
+  <polygon points="238,190 230,186 230,194" fill="#555" />
+
+  <!-- Step 2: Risk Check (Diamond) -->
+  <g transform="translate(240, 130)">
+    <path d="M60 0 L120 60 L60 120 L0 60 Z" fill="#fff9c4" stroke="#fbc02d" stroke-width="2"/>
+    <text x="60" y="55" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#f57f17">Safety</text>
+    <text x="60" y="75" font-family="sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#f57f17">Filter</text>
+  </g>
+
+  <!-- Path: Safe -->
+  <path d="M300 130 L300 80 L650 80 L650 138" stroke="#4caf50" stroke-width="2" stroke-dasharray="5,5" fill="none"/>
+  <polygon points="650,148 646,140 654,140" fill="#4caf50" />
+  <text x="475" y="70" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#4caf50">No Risk (Normal Action)</text>
+
+  <!-- Path: High Risk -->
+  <path d="M360 190 L400 190" stroke="#ff5722" stroke-width="2" fill="none"/>
+  <polygon points="408,190 400,186 400,194" fill="#ff5722" />
+  <text x="385" y="180" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#d84315">High Risk!</text>
+
+  <!-- Step 3: User Confirmation UI -->
+  <g transform="translate(410, 150)">
+    <rect x="0" y="0" width="140" height="80" rx="10" fill="#ffebee" stroke="#f44336" stroke-width="2"/>
+    <text x="70" y="30" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#b71c1c">Confirm UI</text>
+    <text x="70" y="50" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#c62828">Pop-up / Voice</text>
+    <text x="70" y="65" font-family="sans-serif" font-size="10" text-anchor="middle" fill="#c62828">(Elder/Child)</text>
+  </g>
+
+  <!-- Branching Decisions -->
+  
+  <!-- Deny -->
+  <path d="M480 230 L480 270" stroke="#f44336" stroke-width="2" fill="none"/>
+  <polygon points="480,278 476,270 484,270" fill="#f44336" />
+  <g transform="translate(420, 280)">
+    <rect x="0" y="0" width="120" height="40" rx="5" fill="#f5f5f5" stroke="#9e9e9e"/>
+    <text x="60" y="25" font-family="sans-serif" font-size="12" text-anchor="middle" fill="#616161">Task Terminated</text>
+  </g>
+  <text x="490" y="260" font-family="sans-serif" font-size="11" text-anchor="start" fill="#d32f2f">User Deny</text>
+
+  <!-- Allow -->
+  <path d="M550 190 L590 190" stroke="#4caf50" stroke-width="2" fill="none"/>
+  <polygon points="598,190 590,186 590,194" fill="#4caf50" />
+  <text x="575" y="180" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#2e7d32">User Allow</text>
+
+  <!-- Step 4: Execution -->
+  <g transform="translate(600, 150)">
+    <rect x="0" y="0" width="140" height="80" rx="10" fill="#e8f5e9" stroke="#4caf50" stroke-width="2"/>
+    <text x="70" y="35" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#1b5e20">Execute</text>
+    <text x="70" y="55" font-family="sans-serif" font-size="11" text-anchor="middle" fill="#2e7d32">Device Action</text>
+  </g>
+
+  <!-- Legend (marker removed for wider SVG renderer compatibility) -->
+</svg>

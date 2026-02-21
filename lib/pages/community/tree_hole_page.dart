@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import 'post_detail_page.dart';
 
 class TreeHolePage extends StatefulWidget {
@@ -288,11 +289,7 @@ class _TreeHolePageState extends State<TreeHolePage> {
   }
 
   String _resolveUrl(String? path) {
-    if (path == null) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const baseUrl = 'http://8.155.162.219:8084'; // From http.dart
-    if (path.startsWith('/')) return '$baseUrl$path';
-    return '$baseUrl/$path';
+    return AppConfig.currentOrDefault.resolveHttpUrl(path);
   }
 
   ImageProvider _buildAvatarProvider(dynamic avatar) {
@@ -350,7 +347,6 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
   late final AudioRecorder _recorder;
   late final AudioPlayer _player;
   
-  static const String _asrBaseUrl = 'http://192.168.1.7:8000';
   static const String _languagePrefKey = 'asr_language';
   static const List<String> _languageOptions = [
     '中文',
@@ -742,7 +738,9 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
   Future<void> _recognizeAudio(String path) async {
     setState(() => _isRecognizing = true);
     try {
-      final dio = Dio(BaseOptions(baseUrl: _asrBaseUrl, connectTimeout: const Duration(seconds: 30)));
+      final asrBaseUrl = AppConfig.currentOrDefault.asrBaseUrl;
+      if (asrBaseUrl == null || asrBaseUrl.isEmpty) return;
+      final dio = Dio(BaseOptions(baseUrl: asrBaseUrl, connectTimeout: const Duration(seconds: 30)));
       // Ensure filename ends with .mp3 as required by ASR content check or convention
       final form = FormData.fromMap({
         'file': await MultipartFile.fromFile(path, filename: 'audio_record.mp3'),
