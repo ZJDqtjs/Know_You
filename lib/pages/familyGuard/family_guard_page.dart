@@ -511,6 +511,13 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
           _rtcStatusText = '对方已拒绝';
           Fluttertoast.showToast(msg: '对方拒绝了远程协助');
           _stopRemoteControl(closeDialog: true);
+        } else if (msg['type'] == 'control') {
+          final payload = msg['payload'];
+          if (payload is Map && payload['command'] == 'security_blocked') {
+            _rtcStatusText = '触发支付风控，协助已中断';
+            Fluttertoast.showToast(msg: '检测到支付/转账风险，远程协助已自动断开');
+            _stopRemoteControl(closeDialog: true);
+          }
         }
       }
       _bumpAssistUi();

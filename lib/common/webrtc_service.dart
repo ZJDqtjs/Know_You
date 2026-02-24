@@ -223,7 +223,9 @@ class WebRTCService {
              await _handleIceCandidate(payload);
              break;
           case 'control':
-             if (!_isInitiator) {
+             if (_isInitiator) {
+               onMessage?.call({'type': 'control', 'payload': payload});
+             } else {
                onControlCommand?.call(payload);
              }
              break;

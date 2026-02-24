@@ -23,6 +23,7 @@ class RemoteControlAccessibilityService : AccessibilityService() {
     private var screenWidth: Int = 0
     private var screenHeight: Int = 0
     private var lastEventTimestamp: Long = 0
+    private var currentPackageName: String? = null
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -38,6 +39,10 @@ class RemoteControlAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         // 记录事件时间，用于检测屏幕变化
         lastEventTimestamp = System.currentTimeMillis()
+        val pkg = event?.packageName?.toString()
+        if (!pkg.isNullOrBlank()) {
+            currentPackageName = pkg
+        }
     }
 
     override fun onInterrupt() {
@@ -117,6 +122,15 @@ class RemoteControlAccessibilityService : AccessibilityService() {
         collectAllText(rootNode, allText)
         rootNode.recycle()
         return allText.toString()
+    }
+
+    fun getCurrentPackageName(): String? {
+        val rootPackage = rootInActiveWindow?.packageName?.toString()
+        if (!rootPackage.isNullOrBlank()) {
+            currentPackageName = rootPackage
+            return rootPackage
+        }
+        return currentPackageName
     }
     
     private fun collectAllText(node: AccessibilityNodeInfo, result: StringBuilder) {

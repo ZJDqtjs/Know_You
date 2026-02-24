@@ -127,7 +127,15 @@ class _TreeHolePageState extends State<TreeHolePage> {
     final username = post['username'] ?? post['user']?['username'] ?? '匿名用户';
     final avatar = post['avatar'] ?? post['user']?['avatar'];
     final timeText = _formatTime(post['time']);
-    final content = post['content'] ?? (post['hasVoice'] == true ? '语音内容' : '');
+    final titleRaw = post['title']?.toString().trim();
+    final title = (titleRaw != null && titleRaw.isNotEmpty)
+        ? titleRaw
+        : (() {
+            final c = post['content']?.toString().trim() ?? '';
+            if (c.isNotEmpty) return c.length > 20 ? '${c.substring(0, 20)}...' : c;
+            if (post['hasVoice'] == true) return '语音动态';
+            return '';
+          })();
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -189,23 +197,17 @@ class _TreeHolePageState extends State<TreeHolePage> {
           SizedBox(height: 12.h),
           
           // Title & Content
-          if (post['title'] != null)
+          if (title.isNotEmpty)
             Padding(
               padding: EdgeInsets.only(bottom: 8.h),
               child: Text(
-                post['title'],
+                title,
                 style: TextStyle(
                   fontSize: 18.sp,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
-          Text(
-            content,
-            style: TextStyle(fontSize: 15.sp, height: 1.5),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-          ),
           
           if ((post['images'] is List) && (post['images'] as List).isNotEmpty) ...[
             SizedBox(height: 8.h),
@@ -332,7 +334,8 @@ class CreatePostSheet extends StatefulWidget {
 }
 
 class _CreatePostSheetState extends State<CreatePostSheet> {
-  final TextEditingController _textController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
   final List<String> _imagePaths = [];
   String? _audioPath;
   Duration _voiceDuration = Duration.zero;
@@ -402,7 +405,8 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
   void dispose() {
     _recorder.dispose();
     _player.dispose();
-    _textController.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
     super.dispose();
   }
 
@@ -528,12 +532,24 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
                      ],
                    ),
                    SizedBox(height: 8.h),
-                   // Text Input
+                   // Title Input
                    TextField(
-                     controller: _textController,
+                     controller: _titleController,
+                     maxLines: 1,
+                     decoration: InputDecoration(
+                       hintText: '请输入标题...',
+                       border: InputBorder.none,
+                       filled: true,
+                       fillColor: Colors.grey[50],
+                     ),
+                   ),
+                   SizedBox(height: 10.h),
+                   // Content Input (detail page text)
+                   TextField(
+                     controller: _contentController,
                      maxLines: 5,
                      decoration: InputDecoration(
-                       hintText: '分享你的新鲜事...',
+                       hintText: '请输入详情内容（详情页展示）...',
                        border: InputBorder.none,
                        filled: true,
                        fillColor: Colors.grey[50],
@@ -750,8 +766,15 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
       final res = await dio.post('/asr', data: form);
       if (res.statusCode == 200 && res.data is Map && res.data['text'] != null) {
         final text = res.data['text'].toString();
-        if (mounted && _textController.text.isEmpty) {
-          _textController.text = text; // Auto fill if empty
+        if (!mounted) return;
+        if (_contentController.text.trim().isEmpty) {
+          _contentController.text = text; // Auto fill detail if empty
+        }
+        if (_titleController.text.trim().isEmpty) {
+          final t = text.trim();
+          if (t.isNotEmpty) {
+            _titleController.text = t.length > 20 ? '${t.substring(0, 20)}...' : t;
+          }
         }
       }
     } catch (e) {
@@ -763,7 +786,7 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
   }
 
   Future<void> _submitPost() async {
-    if (_textController.text.trim().isEmpty && _audioPath == null && _imagePaths.isEmpty) {
+    if (_contentController.text.trim().isEmpty && _audioPath == null && _imagePaths.isEmpty) {
       Fluttertoast.showToast(msg: '内容不能为空');
       return;
     }
@@ -789,9 +812,13 @@ class _CreatePostSheetState extends State<CreatePostSheet> {
       }
       
       // 3. Create Post
-      final content = _textController.text;
-      // If title is separate, we can generate from content
-      final title = content.length > 20 ? '${content.substring(0, 20)}...' : (content.isEmpty ? '语音动态' : content);
+      final content = _contentController.text.trim();
+      final rawTitle = _titleController.text.trim();
+      final title = rawTitle.isNotEmpty
+          ? rawTitle
+          : (content.isNotEmpty
+              ? (content.length > 20 ? '${content.substring(0, 20)}...' : content)
+              : '语音动态');
       
       await Api.community.createPost(
         title: title,

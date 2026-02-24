@@ -225,6 +225,46 @@ class MainActivity : FlutterActivity() {
                         result.error("SERVICE_NOT_ENABLED", "Accessibility service is not enabled", null)
                     }
                 }
+                "getForegroundPackage" -> {
+                    val service = RemoteControlAccessibilityService.instance
+                    if (service != null) {
+                        result.success(service.getCurrentPackageName())
+                    } else {
+                        result.error("SERVICE_NOT_ENABLED", "Accessibility service is not enabled", null)
+                    }
+                }
+                "getAllScreenText" -> {
+                    val service = RemoteControlAccessibilityService.instance
+                    if (service != null) {
+                        result.success(service.getAllScreenText())
+                    } else {
+                        result.error("SERVICE_NOT_ENABLED", "Accessibility service is not enabled", null)
+                    }
+                }
+                "forceStopPackage" -> {
+                    val pkg = call.argument<String>("packageName")
+                    if (pkg.isNullOrBlank()) {
+                        result.success(mapOf("success" to false, "detail" to "EMPTY_PACKAGE"))
+                    } else if (!shizukuHelper.hasShizukuPermission()) {
+                        result.success(mapOf("success" to false, "detail" to "NO_SHIZUKU_PERMISSION"))
+                    } else {
+                        val (success, output) = shizukuHelper.executeShellCommand("am force-stop $pkg")
+                        result.success(mapOf("success" to success, "detail" to output))
+                    }
+                }
+                "getTopActivity" -> {
+                    if (!shizukuHelper.hasShizukuPermission()) {
+                        result.success(null)
+                    } else {
+                        val command = "dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' ; dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'"
+                        val (success, output) = shizukuHelper.executeShellCommand(command)
+                        if (success) {
+                            result.success(output)
+                        } else {
+                            result.success(null)
+                        }
+                    }
+                }
                 "hasOverlayPermission" -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                         result.success(Settings.canDrawOverlays(this))
@@ -306,6 +346,46 @@ class MainActivity : FlutterActivity() {
                     intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     startActivity(intent)
                     result.success(true)
+                }
+                "getForegroundPackage" -> {
+                    val service = RemoteControlAccessibilityService.instance
+                    if (service != null) {
+                        result.success(service.getCurrentPackageName())
+                    } else {
+                        result.error("SERVICE_NOT_ENABLED", "Accessibility service is not enabled", null)
+                    }
+                }
+                "getAllScreenText" -> {
+                    val service = RemoteControlAccessibilityService.instance
+                    if (service != null) {
+                        result.success(service.getAllScreenText())
+                    } else {
+                        result.error("SERVICE_NOT_ENABLED", "Accessibility service is not enabled", null)
+                    }
+                }
+                "forceStopPackage" -> {
+                    val pkg = call.argument<String>("packageName")
+                    if (pkg.isNullOrBlank()) {
+                        result.success(mapOf("success" to false, "detail" to "EMPTY_PACKAGE"))
+                    } else if (!shizukuHelper.hasShizukuPermission()) {
+                        result.success(mapOf("success" to false, "detail" to "NO_SHIZUKU_PERMISSION"))
+                    } else {
+                        val (success, output) = shizukuHelper.executeShellCommand("am force-stop $pkg")
+                        result.success(mapOf("success" to success, "detail" to output))
+                    }
+                }
+                "getTopActivity" -> {
+                    if (!shizukuHelper.hasShizukuPermission()) {
+                        result.success(null)
+                    } else {
+                        val command = "dumpsys activity activities | grep -E 'mResumedActivity|topResumedActivity' ; dumpsys window | grep -E 'mCurrentFocus|mFocusedApp'"
+                        val (success, output) = shizukuHelper.executeShellCommand(command)
+                        if (success) {
+                            result.success(output)
+                        } else {
+                            result.success(null)
+                        }
+                    }
                 }
                 else -> {
                     result.notImplemented()
