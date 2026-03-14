@@ -13,7 +13,7 @@ class LocalAgentService {
   factory LocalAgentService() => _instance;
 
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.apiBaseUrl, 
+    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl, 
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
   ));

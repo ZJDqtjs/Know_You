@@ -7,6 +7,7 @@ class AppConfig {
   final String httpBaseUrl;
   final String wsUrl;
   final String? asrBaseUrl;
+  final String? agentApiUrl;
   final Duration connectTimeout;
   final Duration receiveTimeout;
 
@@ -17,6 +18,7 @@ class AppConfig {
     required this.connectTimeout,
     required this.receiveTimeout,
     this.asrBaseUrl,
+    this.agentApiUrl,
   });
 
   static const AppConfig _defaults = AppConfig(
@@ -24,6 +26,7 @@ class AppConfig {
     httpBaseUrl: 'http://localhost:3000',
     wsUrl: 'ws://localhost:3000/ws',
     asrBaseUrl: null,
+    agentApiUrl: null,
     connectTimeout: Duration(seconds: 10),
     receiveTimeout: Duration(seconds: 10),
   );
@@ -67,6 +70,7 @@ class AppConfig {
     final httpBaseUrl = (json['http_base_url'] ?? json['httpBaseUrl'])?.toString();
     final wsUrl = (json['ws_url'] ?? json['wsUrl'])?.toString();
     final asrBaseUrl = (json['asr_base_url'] ?? json['asrBaseUrl'])?.toString();
+    final agentApiUrl = (json['agent_api_url'] ?? json['agentApiUrl'])?.toString();
 
     final normalizedApiBaseUrl = apiBaseUrl?.trim();
     final derivedHttpBaseUrl = _deriveHttpBaseUrl(normalizedApiBaseUrl);
@@ -87,6 +91,7 @@ class AppConfig {
       httpBaseUrl: normalizedHttpBaseUrl,
       wsUrl: normalizedWsUrl,
       asrBaseUrl: asrBaseUrl?.trim().isNotEmpty == true ? asrBaseUrl!.trim() : _defaults.asrBaseUrl,
+      agentApiUrl: agentApiUrl?.trim().isNotEmpty == true ? agentApiUrl!.trim() : _defaults.agentApiUrl,
       connectTimeout: Duration(seconds: connectTimeoutSeconds ?? _defaults.connectTimeout.inSeconds),
       receiveTimeout: Duration(seconds: receiveTimeoutSeconds ?? _defaults.receiveTimeout.inSeconds),
     );

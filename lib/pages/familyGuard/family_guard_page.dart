@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import '../../common/webrtc_service.dart';
 import '../../widgets/common_card.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -281,10 +282,10 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                                                 child: CircleAvatar(
                                                   radius: 28.w,
                                                   backgroundColor: const Color(0xFFE1BEE7),
-                                                  backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                                                      ? NetworkImage(avatarUrl)
+                                                  backgroundImage: avatarUrl != null && avatarUrl.toString().isNotEmpty
+                                                      ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString()))
                                                       : null,
-                                                  child: avatarUrl == null || avatarUrl.isEmpty
+                                                  child: avatarUrl == null || avatarUrl.toString().isEmpty
                                                       ? const Icon(Icons.person, color: Colors.white)
                                                       : null,
                                                 ),

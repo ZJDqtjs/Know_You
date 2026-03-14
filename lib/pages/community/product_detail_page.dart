@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -73,7 +74,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     color: Colors.grey[200],
                     child: Center(
                       child: imageUrl is String && imageUrl.isNotEmpty
-                          ? Image.network(imageUrl, fit: BoxFit.cover)
+                          ? Image.network(AppConfig.currentOrDefault.resolveHttpUrl(imageUrl), fit: BoxFit.cover)
                           : Icon(Icons.image, size: 100.sp, color: Colors.grey[400]),
                     ),
                   ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import 'product_detail_page.dart';
 
 class MallPage extends StatefulWidget {
@@ -311,7 +312,7 @@ class _MallPageState extends State<MallPage> {
               ),
               child: Center(
                 child: imageUrl is String && imageUrl.isNotEmpty
-                    ? Image.network(imageUrl, fit: BoxFit.cover)
+                    ? Image.network(AppConfig.currentOrDefault.resolveHttpUrl(imageUrl), fit: BoxFit.cover)
                     : Icon(Icons.image, size: 40.sp, color: Colors.grey[400]),
               ),
             ),

@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import '../../common/auth_provider.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -227,7 +228,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         radius: 50.w,
                         backgroundColor: const Color(0xFFE1BEE7),
                         backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
-                            ? NetworkImage(_avatarUrl!)
+                            ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(_avatarUrl!))
                             : null,
                         child: _avatarUrl == null || _avatarUrl!.isEmpty
                             ? Icon(Icons.person, size: 50.w, color: Colors.white)

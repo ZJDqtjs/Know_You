@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/services.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import '../../common/auth_provider.dart';
 import '../../common/programs_cache.dart';
 import '../../widgets/common_card.dart';
@@ -331,10 +332,10 @@ class _IndexPageState extends State<IndexPage> {
                   CircleAvatar(
                     radius: 22.w,
                     backgroundColor: const Color(0xFFE1BEE7),
-                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty 
-                        ? NetworkImage(avatarUrl) 
+                    backgroundImage: avatarUrl != null && avatarUrl.toString().isNotEmpty 
+                        ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString())) 
                         : null,
-                    child: avatarUrl == null || avatarUrl.isEmpty
+                    child: avatarUrl == null || avatarUrl.toString().isEmpty
                         ? Icon(Icons.person, size: 24.w, color: Colors.white)
                         : null,
                   ),

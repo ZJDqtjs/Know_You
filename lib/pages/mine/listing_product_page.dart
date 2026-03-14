@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import '../../widgets/common_card.dart';
 
 class ListingProductPage extends StatefulWidget {
@@ -138,7 +139,7 @@ class _ListingProductPageState extends State<ListingProductPage> {
                   border: Border.all(color: Colors.grey[400]!),
                   image: _imageFile != null
                     ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
-                    : (_imageUrl != null ? DecorationImage(image: NetworkImage(_imageUrl!), fit: BoxFit.cover) : null),
+                    : (_imageUrl != null ? DecorationImage(image: NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(_imageUrl!)), fit: BoxFit.cover) : null),
                 ),
                 child: _isUploading
                   ? const Center(child: CircularProgressIndicator())

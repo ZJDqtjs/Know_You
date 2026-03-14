@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter/services.dart';
 import '../../common/api.dart';
+import '../../common/app_config.dart';
 import '../../common/auth_provider.dart';
 import '../../common/shizuku_service.dart';
 import '../../common/voice_assistant_service.dart';
@@ -152,10 +153,10 @@ class _MinePageState extends State<MinePage> {
                   CircleAvatar(
                     radius: 40.w,
                     backgroundColor: const Color(0xFFE1BEE7),
-                    backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? NetworkImage(avatarUrl)
+                    backgroundImage: avatarUrl != null && avatarUrl.toString().isNotEmpty
+                        ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString()))
                         : null,
-                    child: avatarUrl == null || avatarUrl.isEmpty
+                    child: avatarUrl == null || avatarUrl.toString().isEmpty
                         ? Icon(Icons.person, size: 40.w, color: Colors.white)
                         : null,
                   ),
@@ -509,10 +510,10 @@ class _MinePageState extends State<MinePage> {
           CircleAvatar(
             radius: 25.w,
             backgroundColor: const Color(0xFFE1BEE7),
-            backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                ? NetworkImage(avatarUrl)
+            backgroundImage: avatarUrl != null && avatarUrl.toString().isNotEmpty
+                ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString()))
                 : null,
-            child: avatarUrl == null || avatarUrl.isEmpty
+            child: avatarUrl == null || avatarUrl.toString().isEmpty
                 ? Text(
                     name[0].toUpperCase(),
                     style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
