@@ -352,6 +352,23 @@ class ShizukuService extends ChangeNotifier with WidgetsBindingObserver {
     _keepAliveTimer = null;
   }
   
+  /// 执行本地 ADB 命令
+  Future<Map<String, dynamic>> executeShellCommand(String command) async {
+    try {
+      final result = await _channel.invokeMethod('executeShellCommand', {
+        'command': command,
+      });
+      // The native side returns mapOf("success" to success, "output" to output)
+      return Map<String, dynamic>.from(result as Map);
+    } catch (e) {
+      print('Failed to execute command: $e');
+      return {
+        'success': false,
+        'output': e.toString(),
+      };
+    }
+  }
+
   /// 释放资源
   @override
   void dispose() {

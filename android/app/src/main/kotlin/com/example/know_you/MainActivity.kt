@@ -145,6 +145,15 @@ class MainActivity : FlutterActivity() {
                         result.error("OPEN_FAILED", e.message, null)
                     }
                 }
+                "executeShellCommand" -> {
+                    val command = call.argument<String>("command")
+                    if (command != null) {
+                        val (success, output) = shizukuHelper.executeShellCommand(command)
+                        result.success(mapOf("success" to success, "output" to output))
+                    } else {
+                        result.error("INVALID_ARGUMENT", "Command is null", null)
+                    }
+                }
                 "initShizukuListeners" -> {
                     shizukuHelper.initShizukuListeners(
                         onBinderReceived = {
