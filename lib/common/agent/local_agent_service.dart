@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../shizuku_service.dart';
-import '../http.dart'; 
 import '../app_config.dart';
 
 /// 飞言本地 Agent 服务（Shizuku 驱动）
@@ -13,9 +11,13 @@ class LocalAgentService {
   factory LocalAgentService() => _instance;
 
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl, 
+    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl,
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
+    headers: {
+      if ((AppConfig.currentOrDefault.agentServerToken ?? '').isNotEmpty)
+        'x-server-token': AppConfig.currentOrDefault.agentServerToken,
+    },
   ));
 
   LocalAgentService._internal();
@@ -38,7 +40,7 @@ class LocalAgentService {
   }
 
   /// 启动一次独立 Agent 任务
-  Future<void> runTask(String task) async {
+  Future<void> runTask(String task, {required String userId}) async {
     if (_isRunning) {
       _log('任务正在运行中，请勿重复启动');
       return;
@@ -66,12 +68,13 @@ class LocalAgentService {
 
         // 2. 组装请求体
         final body = {
+          'user_id': userId,
           if (_sessionId == null) 'task': task,
           if (_sessionId != null) 'session_id': _sessionId,
           'screenshot_base64': screenshotBase64,
           'current_app': currentApp,
-          'screen_width': size.width,
-          'screen_height': size.height,
+          'screen_width': size.width.round(),
+          'screen_height': size.height.round(),
           if (previousResult != null) 'previous_step_result': previousResult,
         };
 
@@ -109,12 +112,14 @@ class LocalAgentService {
           _log('命令执行出现错误，尝试回传模型纠错...');
         }
       }
-    } catch (e) {
-      if (CancelToken.isCancel(e as DioException)) {
+    } on DioException catch (e) {
+      if (CancelToken.isCancel(e)) {
         _log('由于手动取消导致结束');
       } else {
         _log('出现异常: $e');
       }
+    } catch (e) {
+      _log('出现异常: $e');
     } finally {
       _isRunning = false;
       onStateChange?.call(false);

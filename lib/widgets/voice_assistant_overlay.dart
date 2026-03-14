@@ -57,9 +57,7 @@ class _VoiceAssistantOverlayState extends State<VoiceAssistantOverlay> {
     _isDialogVisible = false;
 
     final service = Provider.of<VoiceAssistantService>(context, listen: false);
-    if (service.isEnabled) {
-      service.enable();
-    }
+    service.stopListening();
   }
 
   @override

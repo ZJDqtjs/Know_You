@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'agent/local_agent_service.dart';
 
 class VoiceAssistantService extends ChangeNotifier {
   static const _prefKeyEnabled = 'voice_assistant_enabled';
@@ -19,6 +20,9 @@ class VoiceAssistantService extends ChangeNotifier {
   String? _lastError;
   bool _wakeWordDetected = false;
   bool _isInitializing = false;
+  bool _isExecutingCommand = false;
+
+  static const _permissionErrorCode = 'error_permission';
 
   // Getters
   bool get isEnabled => _isEnabled;
@@ -31,6 +35,7 @@ class VoiceAssistantService extends ChangeNotifier {
   String get responseText => _responseText;
   String? get lastError => _lastError;
   bool get wakeWordDetected => _wakeWordDetected;
+  bool get isExecutingCommand => _isExecutingCommand;
 
   VoiceAssistantService() {
     _speechToText = stt.SpeechToText();
@@ -51,7 +56,6 @@ class VoiceAssistantService extends ChangeNotifier {
       await _initSpeech();
     } catch (e) {
       print('初始化语音助手失败: $e');
-      _isEnabled = false;
       _lastError = '初始化失败，请检查语音识别服务';
       notifyListeners();
     }
@@ -62,65 +66,39 @@ class VoiceAssistantService extends ChangeNotifier {
     _isInitializing = true;
     try {
       _lastError = null;
-      // 请求麦克风权限
-      final status = await Permission.microphone.request();
-      if (status.isDenied) {
-        _isEnabled = false;
-        _lastError = '麦克风权限未授予';
+      final granted = await _ensureMicrophonePermission(requestIfNeeded: true);
+      if (!granted) {
+        _speechAvailable = false;
         notifyListeners();
         return;
       }
 
-      if (status.isPermanentlyDenied) {
-        _isEnabled = false;
-        _lastError = '麦克风权限被永久拒绝';
-        openAppSettings();
-        notifyListeners();
-        return;
-      }
-
-      // 初始化语音识别
       _speechAvailable = await _speechToText.initialize(
         onError: (error) {
           print('语音识别错误: $error');
-          _lastError = error.errorMsg;
-          // 识别错误后，延迟重启监听
-          if (_isEnabled && _speechAvailable) {
-            Future.delayed(const Duration(seconds: 2), () {
-              if (_isEnabled && _speechAvailable && !_isListening) {
-                _startListening();
-              }
-            });
+          final isPermissionError = error.errorMsg.contains(_permissionErrorCode);
+          _lastError = isPermissionError ? '麦克风权限不可用，请在系统设置中开启麦克风权限' : error.errorMsg;
+          if (isPermissionError) {
+            _speechAvailable = false;
           }
           _isListening = false;
           notifyListeners();
         },
         onStatus: (status) {
           print('语音识别状态: $status');
-          // 状态改变后，延迟重启监听
           if (status == 'done' || status == 'notListening') {
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (_isEnabled && _speechAvailable && !_isListening) {
-                _startListening();
-              }
-            });
+            _isListening = false;
+            notifyListeners();
           }
         },
       );
 
       if (!_speechAvailable) {
         print('语音识别不可用');
-        _isEnabled = false;
         _lastError = '语音识别不可用，请安装语音识别服务';
-      } else {
-        _isEnabled = true;
       }
 
       notifyListeners();
-
-      if (_isEnabled && _speechAvailable) {
-        _startListening();
-      }
     } finally {
       _isInitializing = false;
     }
@@ -134,13 +112,13 @@ class VoiceAssistantService extends ChangeNotifier {
     if (!_speechAvailable) {
       await _initSpeech();
     } else {
-      _startListening();
+      startListening();
     }
   }
 
   /// 禁用语音助手
   void disable() {
-    _stopListening();
+    stopListening();
     _isEnabled = false;
     _saveEnabled(false);
     notifyListeners();
@@ -156,10 +134,25 @@ class VoiceAssistantService extends ChangeNotifier {
   }
 
   /// 开始监听
-  void _startListening() async {
-    if (!_speechAvailable || _isListening) return;
+  void startListening() async {
+    if (_isListening) return;
 
     try {
+      if (!_speechAvailable) {
+        await _initSpeech();
+        if (!_speechAvailable) {
+          return;
+        }
+      }
+
+      final granted = await _ensureMicrophonePermission(requestIfNeeded: true);
+      if (!granted) {
+        _isListening = false;
+        _speechAvailable = false;
+        notifyListeners();
+        return;
+      }
+
       _isListening = true;
       _partialText = '';
       notifyListeners();
@@ -175,7 +168,7 @@ class VoiceAssistantService extends ChangeNotifier {
           
           if (normalizedText.contains(normalizedWakeWord)) {
             print('检测到唤醒词: $_wakeWord (原文: $_partialText)');
-            _stopListening();
+            stopListening();
             onWakeWordDetected();
           } else {
             _recognizedText = _partialText;
@@ -183,7 +176,7 @@ class VoiceAssistantService extends ChangeNotifier {
           }
         },
         listenFor: const Duration(minutes: 5),
-        pauseFor: const Duration(seconds: 3),
+        pauseFor: const Duration(seconds: 5),
         partialResults: true,
         localeId: 'zh_CN',
       );
@@ -194,8 +187,79 @@ class VoiceAssistantService extends ChangeNotifier {
     }
   }
 
+  Future<void> submitCommand(String text, {required String userId}) async {
+    final task = text.trim();
+    if (task.isEmpty || _isExecutingCommand) return;
+    if (userId.trim().isEmpty) {
+      _responseText = '缺少 user_id，无法发送指令';
+      notifyListeners();
+      return;
+    }
+
+    _isExecutingCommand = true;
+    _recognizedText = task;
+    _responseText = '正在发送指令...';
+    notifyListeners();
+
+    final agent = LocalAgentService();
+    String latestLog = '';
+
+    agent.onLog = (log) {
+      latestLog = log;
+      _responseText = log;
+      notifyListeners();
+    };
+
+    agent.onStateChange = (running) {
+      _isExecutingCommand = running;
+      if (!running && _responseText.trim().isEmpty) {
+        _responseText = latestLog.isNotEmpty ? latestLog : '指令已发送';
+      }
+      notifyListeners();
+    };
+
+    try {
+      await agent.runTask(task, userId: userId);
+      if (_responseText == '正在发送指令...') {
+        _responseText = latestLog.isNotEmpty ? latestLog : '指令已发送';
+      }
+    } catch (e) {
+      _responseText = '发送失败: $e';
+    } finally {
+      _isExecutingCommand = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> _ensureMicrophonePermission({required bool requestIfNeeded}) async {
+    var status = await Permission.microphone.status;
+
+    if (status.isPermanentlyDenied || status.isRestricted) {
+      _lastError = '麦克风权限被永久拒绝，请前往系统设置开启权限';
+      openAppSettings();
+      return false;
+    }
+
+    if (status.isDenied && requestIfNeeded) {
+      status = await Permission.microphone.request();
+    }
+
+    if (!status.isGranted) {
+      _lastError = status.isPermanentlyDenied
+          ? '麦克风权限被永久拒绝，请前往系统设置开启权限'
+          : '麦克风权限未授予';
+      if (status.isPermanentlyDenied || status.isRestricted) {
+        openAppSettings();
+      }
+      return false;
+    }
+
+    _lastError = null;
+    return true;
+  }
+
   /// 停止监听
-  Future<void> _stopListening() async {
+  Future<void> stopListening() async {
     try {
       if (_speechToText.isListening) {
         await _speechToText.stop();
@@ -260,7 +324,7 @@ class VoiceAssistantService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _stopListening();
+    stopListening();
     super.dispose();
   }
 }

@@ -4,6 +4,7 @@
   "ws_url": "ws://10.73.113.192:3000/ws",
   "asr_base_url": "http://10.73.113.192:8000",
   "agent_api_url": "http://10.73.113.192:8002",
+  "agent_server_token": "",
   "dio": {
     "connect_timeout_seconds": 10,
     "receive_timeout_seconds": 10

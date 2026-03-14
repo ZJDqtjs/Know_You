@@ -5,6 +5,7 @@ import 'http.dart';
 import 'notification_service.dart';
 
 class AuthProvider extends ChangeNotifier {
+  static const _prefUserIdKey = 'auth_user_id';
   bool _isLoggedIn = false;
   Map<String, dynamic>? _user;
 
@@ -29,6 +30,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final res = await Api.auth.me();
       _user = res;
+      await _persistUserId(_user);
       notifyListeners();
     } catch (e) {
       print('Load user failed: $e');
@@ -45,6 +47,10 @@ class AuthProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_access_token', accessToken);
       await prefs.setString('auth_refresh_token', refreshToken);
+      final dynamic rawUserId = user?['id'] ?? user?['userId'];
+      if (rawUserId != null) {
+        await prefs.setString(_prefUserIdKey, rawUserId.toString());
+      }
       
       _isLoggedIn = true;
       _user = user;
@@ -65,6 +71,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefUserIdKey);
     await HttpService().clearTokens();
     _isLoggedIn = false;
     _user = null;
@@ -74,6 +82,14 @@ class AuthProvider extends ChangeNotifier {
 
   void updateUser(Map<String, dynamic> updatedUser) {
     _user = updatedUser;
+    _persistUserId(_user);
     notifyListeners();
+  }
+
+  Future<void> _persistUserId(Map<String, dynamic>? user) async {
+    final dynamic rawUserId = user?['id'] ?? user?['userId'];
+    if (rawUserId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefUserIdKey, rawUserId.toString());
   }
 }
