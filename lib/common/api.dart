@@ -181,4 +181,25 @@ class RecommendationApi {
         'page': page,
         'pageSize': pageSize,
       });
+
+  Future<dynamic> getProfile() => _http.get('/recommendations/profile');
+
+  Future<dynamic> trackEvent({
+    required String scene,
+    required String action,
+    String targetType = 'other',
+    int? targetId,
+    String? keyword,
+    List<String>? tags,
+    Map<String, dynamic>? payload,
+  }) =>
+      _http.post('/recommendations/events', data: {
+        'scene': scene,
+        'action': action,
+        'targetType': targetType,
+        if (targetId != null) 'targetId': targetId,
+        if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
+        if (tags != null && tags.isNotEmpty) 'tags': tags,
+        if (payload != null) 'payload': payload,
+      });
 }

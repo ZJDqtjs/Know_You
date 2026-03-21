@@ -143,7 +143,17 @@ class _TreeHolePageState extends State<TreeHolePage> {
             return '';
           })();
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
+        final postId = post['id'];
+        if (postId is int) {
+          // 点击帖子时回传行为，驱动后端画像增量更新。
+          Api.recommendation.trackEvent(
+            scene: 'community',
+            action: 'click',
+            targetType: 'post',
+            targetId: postId,
+          ).catchError((_) {});
+        }
         Navigator.push(
           context,
           MaterialPageRoute(

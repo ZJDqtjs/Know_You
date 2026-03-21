@@ -200,7 +200,18 @@ class _MallPageState extends State<MallPage> {
                           isDense: true,
                         ),
                         textInputAction: TextInputAction.search,
-                        onSubmitted: (_) => _fetchProducts(refresh: true),
+                        onSubmitted: (v) {
+                          final keyword = v.trim();
+                          if (keyword.isNotEmpty) {
+                            Api.recommendation.trackEvent(
+                              scene: 'search',
+                              action: 'search',
+                              targetType: 'keyword',
+                              keyword: keyword,
+                            ).catchError((_) {});
+                          }
+                          _fetchProducts(refresh: true);
+                        },
                       ),
                     ),
                   ],
@@ -299,6 +310,15 @@ class _MallPageState extends State<MallPage> {
     final imageUrl = product['imageUrl'];
     return GestureDetector(
       onTap: () {
+        final productId = product['id'];
+        if (productId is int) {
+          Api.recommendation.trackEvent(
+            scene: 'mall',
+            action: 'click',
+            targetType: 'product',
+            targetId: productId,
+          ).catchError((_) {});
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
