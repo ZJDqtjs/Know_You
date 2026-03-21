@@ -73,12 +73,23 @@ class _MallPageState extends State<MallPage> {
     }
 
     try {
-      final res = await Api.mall.listProducts(
-        page: _page,
-        pageSize: _pageSize,
-        keyword: _keywordController.text.trim().isEmpty ? null : _keywordController.text.trim(),
-        categoryId: _activeCategoryId,
-      );
+      final keyword = _keywordController.text.trim().isEmpty ? null : _keywordController.text.trim();
+      dynamic res;
+      if (keyword == null && _activeCategoryId == null) {
+        try {
+          res = await Api.recommendation.listRecommendedProducts(page: _page, pageSize: _pageSize);
+        } catch (_) {
+          res = await Api.mall.listProducts(page: _page, pageSize: _pageSize);
+        }
+      } else {
+        // 用户主动搜索/筛选时使用精确检索列表。
+        res = await Api.mall.listProducts(
+          page: _page,
+          pageSize: _pageSize,
+          keyword: keyword,
+          categoryId: _activeCategoryId,
+        );
+      }
       final list = (res is Map && res['list'] is List) ? List<Map<String, dynamic>>.from(res['list']) : <Map<String, dynamic>>[];
       setState(() {
         if (refresh) {

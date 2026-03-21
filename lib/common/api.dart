@@ -13,6 +13,7 @@ class Api {
   static final LogsApi logs = LogsApi(_http);
   static final CommunityApi community = CommunityApi(_http);
   static final MallApi mall = MallApi(_http);
+  static final RecommendationApi recommendation = RecommendationApi(_http);
 }
 
 class AuthApi {
@@ -162,5 +163,22 @@ class MallApi {
         'page': page,
         'pageSize': pageSize,
         if (status != null && status.isNotEmpty) 'status': status,
+      });
+}
+
+class RecommendationApi {
+  final HttpService _http;
+  RecommendationApi(this._http);
+
+  Future<dynamic> listRecommendedPosts({int page = 1, int pageSize = 20}) =>
+      _http.get('/recommendations/posts', params: {
+        'page': page,
+        'pageSize': pageSize,
+      });
+
+  Future<dynamic> listRecommendedProducts({int page = 1, int pageSize = 20}) =>
+      _http.get('/recommendations/products', params: {
+        'page': page,
+        'pageSize': pageSize,
       });
 }

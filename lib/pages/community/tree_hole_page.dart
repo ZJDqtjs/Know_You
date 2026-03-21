@@ -66,7 +66,13 @@ class _TreeHolePageState extends State<TreeHolePage> {
     }
 
     try {
-      final res = await Api.community.listPosts(page: _page, pageSize: _pageSize);
+      dynamic res;
+      try {
+        res = await Api.recommendation.listRecommendedPosts(page: _page, pageSize: _pageSize);
+      } catch (_) {
+        // 推荐接口不可用时降级到时间流，保证页面可用。
+        res = await Api.community.listPosts(page: _page, pageSize: _pageSize);
+      }
       final list = (res is Map && res['list'] is List) ? List<Map<String, dynamic>>.from(res['list']) : <Map<String, dynamic>>[];
       setState(() {
         if (refresh) {
