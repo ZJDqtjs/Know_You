@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'app_config.dart';
 import 'agent/local_agent_service.dart';
 
 class VoiceAssistantService extends ChangeNotifier {
@@ -21,6 +25,8 @@ class VoiceAssistantService extends ChangeNotifier {
   bool _wakeWordDetected = false;
   bool _isInitializing = false;
   bool _isExecutingCommand = false;
+  bool _isCloudRecording = false;
+  late final AudioRecorder _recorder;
 
   static const _permissionErrorCode = 'error_permission';
 
@@ -39,7 +45,11 @@ class VoiceAssistantService extends ChangeNotifier {
 
   VoiceAssistantService() {
     _speechToText = stt.SpeechToText();
+    _recorder = AudioRecorder();
   }
+
+  bool get _useCloudAsr =>
+      (AppConfig.currentOrDefault.asrBaseUrl ?? '').trim().isNotEmpty;
 
   /// 初始化语音助手
   Future<void> init() async {
@@ -50,6 +60,13 @@ class VoiceAssistantService extends ChangeNotifier {
       notifyListeners();
 
       if (!_isEnabled) {
+        return;
+      }
+
+      if (_useCloudAsr) {
+        _speechAvailable = true;
+        _lastError = null;
+        notifyListeners();
         return;
       }
 
@@ -73,25 +90,37 @@ class VoiceAssistantService extends ChangeNotifier {
         return;
       }
 
-      _speechAvailable = await _speechToText.initialize(
-        onError: (error) {
-          print('语音识别错误: $error');
-          final isPermissionError = error.errorMsg.contains(_permissionErrorCode);
-          _lastError = isPermissionError ? '麦克风权限不可用，请在系统设置中开启麦克风权限' : error.errorMsg;
-          if (isPermissionError) {
-            _speechAvailable = false;
-          }
-          _isListening = false;
-          notifyListeners();
-        },
-        onStatus: (status) {
-          print('语音识别状态: $status');
-          if (status == 'done' || status == 'notListening') {
+      try {
+        _speechAvailable = await _speechToText.initialize(
+          onError: (error) {
+            print('语音识别错误: $error');
+            final isPermissionError = error.errorMsg.contains(_permissionErrorCode);
+            _lastError = isPermissionError
+                ? '麦克风权限不可用，请在系统设置中开启麦克风权限'
+                : error.errorMsg;
+            if (isPermissionError) {
+              _speechAvailable = false;
+            }
             _isListening = false;
             notifyListeners();
-          }
-        },
-      );
+          },
+          onStatus: (status) {
+            print('语音识别状态: $status');
+            if (status == 'done' || status == 'notListening') {
+              _isListening = false;
+              notifyListeners();
+            }
+          },
+        );
+      } catch (e) {
+        _speechAvailable = false;
+        final errorText = e.toString();
+        if (errorText.contains('recognizerNotAvailable')) {
+          _lastError = '当前设备不支持本地语音识别，请使用下方文本输入';
+        } else {
+          _lastError = '语音识别初始化失败: $e';
+        }
+      }
 
       if (!_speechAvailable) {
         print('语音识别不可用');
@@ -109,6 +138,14 @@ class VoiceAssistantService extends ChangeNotifier {
     _isEnabled = true;
     notifyListeners();
     _saveEnabled(true);
+
+    if (_useCloudAsr) {
+      _speechAvailable = true;
+      _lastError = null;
+      notifyListeners();
+      return;
+    }
+
     if (!_speechAvailable) {
       await _initSpeech();
     } else {
@@ -138,6 +175,11 @@ class VoiceAssistantService extends ChangeNotifier {
     if (_isListening) return;
 
     try {
+      if (_useCloudAsr) {
+        await _startCloudRecording();
+        return;
+      }
+
       if (!_speechAvailable) {
         await _initSpeech();
         if (!_speechAvailable) {
@@ -183,6 +225,80 @@ class VoiceAssistantService extends ChangeNotifier {
     } catch (e) {
       print('开始监听失败: $e');
       _isListening = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _startCloudRecording() async {
+    final granted = await _ensureMicrophonePermission(requestIfNeeded: true);
+    if (!granted) {
+      _isListening = false;
+      notifyListeners();
+      return;
+    }
+
+    final hasPermission = await _recorder.hasPermission();
+    if (!hasPermission) {
+      _lastError = '麦克风权限不可用，请检查系统设置';
+      notifyListeners();
+      return;
+    }
+
+    final dir = await getTemporaryDirectory();
+    final path = '${dir.path}/voice_assistant_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.aacLc),
+      path: path,
+    );
+
+    _isCloudRecording = true;
+    _isListening = true;
+    _lastError = null;
+    notifyListeners();
+  }
+
+  Future<void> _transcribeCloudAudio(String path) async {
+    final asrBaseUrl = AppConfig.currentOrDefault.asrBaseUrl?.trim();
+    if (asrBaseUrl == null || asrBaseUrl.isEmpty) {
+      _lastError = '未配置云端语音识别服务地址';
+      notifyListeners();
+      return;
+    }
+
+    try {
+      _responseText = '正在识别语音...';
+      notifyListeners();
+
+      final dio = Dio(BaseOptions(
+        baseUrl: asrBaseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 60),
+      ));
+
+      final form = FormData.fromMap({
+        'file': await MultipartFile.fromFile(path, filename: 'audio_record.mp3'),
+        'language': '中文',
+        'itn': 'true',
+      });
+
+      final res = await dio.post('/asr', data: form);
+      if (res.statusCode == 200 && res.data is Map && res.data['text'] != null) {
+        final text = res.data['text'].toString().trim();
+        _recognizedText = text;
+        _responseText = '';
+        _lastError = null;
+
+        final normalizedText = text.replaceAll(RegExp(r'[，。！？、,\.!\?\s]'), '');
+        final normalizedWakeWord = _wakeWord.replaceAll(RegExp(r'[，。！？、,\.!\?\s]'), '');
+        if (normalizedText.isNotEmpty && normalizedText.contains(normalizedWakeWord)) {
+          onWakeWordDetected();
+        }
+      } else {
+        _lastError = '云端语音识别失败：响应异常';
+      }
+    } catch (e) {
+      _lastError = '云端语音识别失败: $e';
+    } finally {
       notifyListeners();
     }
   }
@@ -261,6 +377,19 @@ class VoiceAssistantService extends ChangeNotifier {
   /// 停止监听
   Future<void> stopListening() async {
     try {
+      if (_useCloudAsr && _isCloudRecording) {
+        final path = await _recorder.stop();
+        _isCloudRecording = false;
+        _isListening = false;
+        _partialText = '';
+        notifyListeners();
+
+        if (path != null && path.isNotEmpty) {
+          await _transcribeCloudAudio(path);
+        }
+        return;
+      }
+
       if (_speechToText.isListening) {
         await _speechToText.stop();
       }
@@ -324,7 +453,15 @@ class VoiceAssistantService extends ChangeNotifier {
 
   @override
   void dispose() {
-    stopListening();
+    if (_isCloudRecording) {
+      _recorder.stop();
+      _isCloudRecording = false;
+    }
+    if (_speechToText.isListening) {
+      _speechToText.stop();
+    }
+    _isListening = false;
+    _recorder.dispose();
     super.dispose();
   }
 }

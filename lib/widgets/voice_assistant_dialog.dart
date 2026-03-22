@@ -23,6 +23,8 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _pulseAnimation;
   final TextEditingController _textController = TextEditingController();
+  VoiceAssistantService? _service;
+  bool _serviceListenerAttached = false;
 
   @override
   void initState() {
@@ -47,14 +49,19 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
     _slideController.forward();
     _pulseController.repeat(reverse: true);
 
-    // Initial logic
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final service = Provider.of<VoiceAssistantService>(context, listen: false);
-      service.addListener(_onServiceUpdate);
-      if (!service.isListening && service.speechAvailable) {
-        service.startListening();
-      }
-    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _service ??= Provider.of<VoiceAssistantService>(context, listen: false);
+    if (!_serviceListenerAttached) {
+      _service!.addListener(_onServiceUpdate);
+      _serviceListenerAttached = true;
+    }
+    if (!_service!.isListening && _service!.speechAvailable) {
+      _service!.startListening();
+    }
   }
 
   void _onServiceUpdate() {
@@ -83,13 +90,15 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
     }
 
     await service.submitCommand(text, userId: userId);
+    if (!mounted) return;
     FocusScope.of(context).unfocus();
   }
 
   @override
   void dispose() {
-    final service = Provider.of<VoiceAssistantService>(context, listen: false);
-    service.removeListener(_onServiceUpdate);
+    if (_serviceListenerAttached) {
+      _service?.removeListener(_onServiceUpdate);
+    }
     _textController.dispose();
     _slideController.dispose();
     _pulseController.dispose();
