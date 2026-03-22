@@ -25,6 +25,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
   final TextEditingController _textController = TextEditingController();
   VoiceAssistantService? _service;
   bool _serviceListenerAttached = false;
+  bool _isTextInputMode = true;
 
   @override
   void initState() {
@@ -59,16 +60,12 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
       _service!.addListener(_onServiceUpdate);
       _serviceListenerAttached = true;
     }
-    if (!_service!.isListening && _service!.speechAvailable) {
-      _service!.startListening();
-    }
   }
 
   void _onServiceUpdate() {
     if (!mounted) return;
     final service = Provider.of<VoiceAssistantService>(context, listen: false);
-    // If it's listening and transcribing, update text field, but put cursor at end
-    if (service.isListening && service.recognizedText.isNotEmpty) {
+    if (service.recognizedText.isNotEmpty) {
       if (_textController.text != service.recognizedText) {
         _textController.value = TextEditingValue(
           text: service.recognizedText,
@@ -116,7 +113,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
     final dialogWidth = screenSize.width;
-    final dialogHeight = screenSize.height * 0.25; // 占屏幕1/4
+    final dialogHeight = screenSize.height * 0.36;
 
     return SlideTransition(
       position: _slideAnimation,
@@ -200,100 +197,159 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                       ),
                       const SizedBox(height: 8),
                     ],
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.06),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Center(
-                                child: TextField(
-                                  controller: _textController,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.white70,
-                                  ),
-                                  decoration: const InputDecoration(
-                                    hintText: '请说出指令或在此输入…',
-                                    hintStyle: TextStyle(color: Colors.white38),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                  ),
-                                  onChanged: (value) {
-                                    service.updateRecognizedText(value);
-                                  },
-                                  onSubmitted: (value) {
-                                    _submitText(service);
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Container(
-                            width: 42,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF2F8A3C),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: IconButton(
-                              onPressed: service.isExecutingCommand
-                                  ? null
-                                  : () => _submitText(service),
-                              icon: const Icon(Icons.send, color: Colors.white, size: 18),
-                              tooltip: '发送',
-                              splashRadius: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          GestureDetector(
-                            onTap: () {
-                              if (service.isListening) {
-                                service.stopListening();
-                              } else {
-                                service.startListening();
-                              }
-                            },
-                            child: ScaleTransition(
-                              scale: service.isListening 
-                                  ? _pulseAnimation 
-                                  : const AlwaysStoppedAnimation(1.0),
-                              child: Container(
-                                width: 60,
-                                height: 60,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: service.isListening
-                                        ? [const Color(0xFF3BE8FF), const Color(0xFF7B61FF)]
-                                        : [Colors.grey.shade600, Colors.grey.shade800],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  boxShadow: service.isListening
-                                      ? [
-                                          BoxShadow(
-                                            color: Colors.blueAccent.withOpacity(0.4),
-                                            blurRadius: 16,
-                                            spreadRadius: 2,
-                                          ),
-                                        ]
-                                      : [],
-                                ),
-                                child: Icon(
-                                  service.isListening ? Icons.mic : Icons.mic_off,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '识别文字',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: SingleChildScrollView(
+                          child: Text(
+                            service.recognizedText.isNotEmpty
+                                ? service.recognizedText
+                                : '识别完成后的文字会显示在这里',
+                            style: TextStyle(
+                              fontSize: 20,
+                              height: 1.35,
+                              color: service.recognizedText.isNotEmpty
+                                  ? Colors.white
+                                  : Colors.white54,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _isTextInputMode = !_isTextInputMode;
+                              });
+                            },
+                            icon: Icon(
+                              _isTextInputMode ? Icons.mic_none : Icons.keyboard,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            tooltip: _isTextInputMode ? '切换到按住说话' : '切换到键盘输入',
+                            splashRadius: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SizedBox(
+                            height: 46,
+                            child: _isTextInputMode
+                                ? Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.06),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Center(
+                                      child: TextField(
+                                        controller: _textController,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.white70,
+                                        ),
+                                        decoration: const InputDecoration(
+                                          hintText: '输入指令后点击发送',
+                                          hintStyle: TextStyle(color: Colors.white38, fontSize: 15),
+                                          border: InputBorder.none,
+                                          isDense: true,
+                                        ),
+                                        onChanged: (value) {
+                                          service.updateRecognizedText(value);
+                                        },
+                                        onSubmitted: (value) {
+                                          _submitText(service);
+                                        },
+                                      ),
+                                    ),
+                                  )
+                                : GestureDetector(
+                                    onLongPressStart: (_) {
+                                      service.startListening();
+                                    },
+                                    onLongPressEnd: (_) {
+                                      service.stopListening();
+                                    },
+                                    child: ScaleTransition(
+                                      scale: service.isListening
+                                          ? _pulseAnimation
+                                          : const AlwaysStoppedAnimation(1.0),
+                                      child: Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: service.isListening
+                                              ? const Color(0x332F8A3C)
+                                              : Colors.white.withOpacity(0.06),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: service.isListening
+                                                ? const Color(0xFF3BE8FF)
+                                                : Colors.white24,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          service.isListening ? '松开结束说话' : '按住说话',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: service.isListening
+                                                ? const Color(0xFF62E3FF)
+                                                : Colors.white70,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2F8A3C),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: IconButton(
+                            onPressed: service.isExecutingCommand
+                                ? null
+                                : () => _submitText(service),
+                            icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                            tooltip: '发送',
+                            splashRadius: 18,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
