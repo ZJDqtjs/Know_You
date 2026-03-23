@@ -33,6 +33,10 @@ class LocalAgentService {
   /// 回调：用于向 UI 更新状态和日志
   Function(String text)? onLog;
   Function(bool running)? onStateChange;
+  Function(bool capturing)? onCaptureStateChange;
+
+  static const _adbKeyboardImeId = 'com.android.adbkeyboard/.AdbIME';
+  String? _originalIme;
 
   void _log(String text) {
     print('[LocalAgent] $text');
@@ -54,10 +58,14 @@ class LocalAgentService {
 
     try {
       _log('开始执行任务: $task');
+      await _ensureAdbKeyboardReady();
 
       while (!_cancelToken!.isCancelled) {
         // 1. 获取屏幕状态
+        onCaptureStateChange?.call(true);
+        await Future.delayed(const Duration(milliseconds: 120));
         final screenshotBase64 = await _captureScreenBase64();
+        onCaptureStateChange?.call(false);
         final currentApp = await _detectCurrentApp();
         final size = await _getScreenSize();
 
@@ -121,6 +129,8 @@ class LocalAgentService {
     } catch (e) {
       _log('出现异常: $e');
     } finally {
+      onCaptureStateChange?.call(false);
+      await _restoreInputMethod();
       _isRunning = false;
       onStateChange?.call(false);
     }
@@ -139,6 +149,46 @@ class LocalAgentService {
           print('Reset API failed: $e');
         }
       }
+    }
+  }
+
+  Future<void> _ensureAdbKeyboardReady() async {
+    try {
+      final currentImeRes = await ShizukuService().executeShellCommand('settings get secure default_input_method');
+      if (currentImeRes['success'] == true) {
+        final currentIme = (currentImeRes['output'] ?? '').toString().trim();
+        if (currentIme.isNotEmpty) {
+          _originalIme = currentIme;
+        }
+      }
+
+      final pkgRes = await ShizukuService().executeShellCommand('pm path com.android.adbkeyboard');
+      final output = (pkgRes['output'] ?? '').toString();
+      final installed = pkgRes['success'] == true && output.contains('package:');
+      if (!installed) {
+        _log('未检测到ADBKeyBoard（com.android.adbkeyboard），请先安装并启用');
+        return;
+      }
+
+      await ShizukuService().executeShellCommand('ime enable $_adbKeyboardImeId');
+      final setRes = await ShizukuService().executeShellCommand('ime set $_adbKeyboardImeId');
+      if (setRes['success'] == true) {
+        _log('已切换到ADBKeyBoard输入法');
+      } else {
+        _log('ADBKeyBoard启用失败，请在系统中手动启用输入法');
+      }
+    } catch (e) {
+      _log('检查ADBKeyBoard失败: $e');
+    }
+  }
+
+  Future<void> _restoreInputMethod() async {
+    final ime = _originalIme;
+    if (ime == null || ime.isEmpty || ime == _adbKeyboardImeId) return;
+    try {
+      await ShizukuService().executeShellCommand('ime set $ime');
+    } catch (_) {
+      // ignore restore failure
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../common/voice_assistant_service.dart';
@@ -6,10 +7,12 @@ import '../common/auth_provider.dart';
 
 class VoiceAssistantDialog extends StatefulWidget {
   final VoidCallback onClose;
+  final VoidCallback? onTaskStarted;
 
   const VoiceAssistantDialog({
     super.key,
     required this.onClose,
+    this.onTaskStarted,
   });
 
   @override
@@ -19,13 +22,18 @@ class VoiceAssistantDialog extends StatefulWidget {
 class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
     with TickerProviderStateMixin {
   late AnimationController _slideController;
-  late AnimationController _pulseController;
+  late AnimationController _overlayPulseController;
   late Animation<Offset> _slideAnimation;
-  late Animation<double> _pulseAnimation;
+  late Animation<double> _overlayPulseAnimation;
   final TextEditingController _textController = TextEditingController();
   VoiceAssistantService? _service;
   bool _serviceListenerAttached = false;
-  bool _isTextInputMode = true;
+  bool _isTextInputMode = false;
+  double _longPressStartY = 0;
+  bool _voiceCanceledBySlide = false;
+  bool _isVoicePressing = false;
+  static const double _slideCancelThreshold = 12;
+  static const double _slideRestoreThreshold = 6;
 
   @override
   void initState() {
@@ -39,17 +47,15 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+    _overlayPulseController = AnimationController(
+      duration: const Duration(milliseconds: 900),
       vsync: this,
     );
-    _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    _overlayPulseAnimation = Tween<double>(begin: 0.88, end: 1.12).animate(
+      CurvedAnimation(parent: _overlayPulseController, curve: Curves.easeInOut),
     );
 
     _slideController.forward();
-    _pulseController.repeat(reverse: true);
-
   }
 
   @override
@@ -75,9 +81,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
     }
   }
 
-  Future<void> _submitText(VoiceAssistantService service) async {
-    final text = _textController.text.trim();
-    if (text.isEmpty) return;
+  Future<String> _resolveUserId() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final dynamic rawId = auth.user?['id'] ?? auth.user?['userId'];
     var userId = rawId?.toString() ?? '';
@@ -85,8 +89,16 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
       final prefs = await SharedPreferences.getInstance();
       userId = prefs.getString('auth_user_id') ?? '';
     }
+    return userId;
+  }
 
-    await service.submitCommand(text, userId: userId);
+  Future<void> _submitText(VoiceAssistantService service) async {
+    final text = _textController.text.trim();
+    if (text.isEmpty) return;
+
+    final userId = await _resolveUserId();
+    widget.onTaskStarted?.call();
+    unawaited(service.submitCommand(text, userId: userId));
     if (!mounted) return;
     FocusScope.of(context).unfocus();
   }
@@ -98,15 +110,71 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
     }
     _textController.dispose();
     _slideController.dispose();
-    _pulseController.dispose();
+    _overlayPulseController.dispose();
     super.dispose();
   }
 
   void _closeDialog() {
-    _pulseController.stop();
     _slideController.reverse().then((_) {
       widget.onClose();
     });
+  }
+
+  Widget _buildVoicePressOverlay() {
+    final canceling = _voiceCanceledBySlide;
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Center(
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 90),
+            opacity: _isVoicePressing ? 1 : 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ScaleTransition(
+                  scale: canceling
+                      ? const AlwaysStoppedAnimation(1.0)
+                      : _overlayPulseAnimation,
+                  child: Container(
+                    width: 92,
+                    height: 92,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: canceling ? const Color(0x33FF5252) : const Color(0x332F8A3C),
+                      border: Border.all(
+                        color: canceling ? const Color(0xFFFF8A80) : const Color(0xFF68D9A8),
+                        width: 2,
+                      ),
+                    ),
+                    child: Icon(
+                      canceling ? Icons.cancel_rounded : Icons.mic,
+                      size: 42,
+                      color: canceling ? const Color(0xFFFF8A80) : const Color(0xFF5DE0B6),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: canceling ? const Color(0xCC8B1C1C) : const Color(0xCC1C4F42),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    canceling ? '松开手指，取消识别' : '上滑取消，下滑恢复',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -140,12 +208,11 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
             ),
             child: Consumer<VoiceAssistantService>(
             builder: (context, service, _) {
-              final statusText = service.lastError?.isNotEmpty == true
-                  ? service.lastError!
-                  : (service.isListening ? '正在聆听…' : '已就绪');
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: Column(
+              return Stack(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Column(
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -169,19 +236,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      statusText,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: service.lastError?.isNotEmpty == true
-                            ? const Color(0xFFFF8A80)
-                            : service.isListening
-                            ? const Color(0xFF62E3FF)
-                            : Colors.white54,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 4),
                     if (service.responseText.isNotEmpty) ...[
                       Align(
                         alignment: Alignment.centerLeft,
@@ -239,11 +294,11 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                     Row(
                       children: [
                         Container(
-                          width: 42,
-                          height: 42,
+                          width: 52,
+                          height: 52,
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.08),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: IconButton(
                             onPressed: () {
@@ -254,7 +309,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                             icon: Icon(
                               _isTextInputMode ? Icons.mic_none : Icons.keyboard,
                               color: Colors.white,
-                              size: 20,
+                              size: 24,
                             ),
                             tooltip: _isTextInputMode ? '切换到按住说话' : '切换到键盘输入',
                             splashRadius: 18,
@@ -263,7 +318,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                         const SizedBox(width: 10),
                         Expanded(
                           child: SizedBox(
-                            height: 46,
+                            height: 56,
                             child: _isTextInputMode
                                 ? Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -275,12 +330,12 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                                       child: TextField(
                                         controller: _textController,
                                         style: const TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 18,
                                           color: Colors.white70,
                                         ),
                                         decoration: const InputDecoration(
                                           hintText: '输入指令后点击发送',
-                                          hintStyle: TextStyle(color: Colors.white38, fontSize: 15),
+                                          hintStyle: TextStyle(color: Colors.white38, fontSize: 16),
                                           border: InputBorder.none,
                                           isDense: true,
                                         ),
@@ -294,39 +349,74 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                                     ),
                                   )
                                 : GestureDetector(
-                                    onLongPressStart: (_) {
+                                    onLongPressStart: (details) {
+                                      setState(() {
+                                        _longPressStartY = details.globalPosition.dy;
+                                        _voiceCanceledBySlide = false;
+                                        _isVoicePressing = true;
+                                      });
+                                      _overlayPulseController.repeat(reverse: true);
                                       service.startListening();
                                     },
-                                    onLongPressEnd: (_) {
-                                      service.stopListening();
+                                    onLongPressMoveUpdate: (details) {
+                                      final delta = _longPressStartY - details.globalPosition.dy;
+                                      final nextCanceled = _voiceCanceledBySlide
+                                          ? delta > _slideRestoreThreshold
+                                          : delta > _slideCancelThreshold;
+                                      if (nextCanceled != _voiceCanceledBySlide) {
+                                        setState(() {
+                                          _voiceCanceledBySlide = nextCanceled;
+                                        });
+                                      }
                                     },
-                                    child: ScaleTransition(
-                                      scale: service.isListening
-                                          ? _pulseAnimation
-                                          : const AlwaysStoppedAnimation(1.0),
-                                      child: Container(
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: service.isListening
-                                              ? const Color(0x332F8A3C)
-                                              : Colors.white.withOpacity(0.06),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(
-                                            color: service.isListening
-                                                ? const Color(0xFF3BE8FF)
-                                                : Colors.white24,
-                                          ),
+                                    onLongPressEnd: (_) {
+                                      service.stopListening(cancelRecognition: _voiceCanceledBySlide);
+                                      _overlayPulseController.stop();
+                                      setState(() {
+                                        _voiceCanceledBySlide = false;
+                                        _isVoicePressing = false;
+                                      });
+                                    },
+                                    child: Container(
+                                      alignment: Alignment.center,
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: _voiceCanceledBySlide
+                                            ? const Color(0x33FF5252)
+                                            : (service.isListening
+                                                ? const Color(0x332F8A3C)
+                                                : Colors.white.withOpacity(0.06)),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: _voiceCanceledBySlide
+                                              ? const Color(0xFFFF8A80)
+                                              : (service.isListening
+                                                  ? const Color(0xFF3BE8FF)
+                                                  : Colors.white24),
                                         ),
-                                        child: Text(
-                                          service.isListening ? '松开结束说话' : '按住说话',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            color: service.isListening
-                                                ? const Color(0xFF62E3FF)
-                                                : Colors.white70,
-                                            fontWeight: FontWeight.w600,
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text(
+                                            service.isListening
+                                                ? (_voiceCanceledBySlide ? '松开取消，下滑恢复' : '松开结束说话')
+                                                : '按住说话',
+                                            maxLines: 1,
+                                            softWrap: false,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: _voiceCanceledBySlide
+                                                  ? const Color(0xFFFF8A80)
+                                                  : (service.isListening
+                                                      ? const Color(0xFF62E3FF)
+                                                      : Colors.white70),
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -334,17 +424,17 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                         ),
                         const SizedBox(width: 12),
                         Container(
-                          width: 42,
-                          height: 42,
+                          width: 52,
+                          height: 52,
                           decoration: BoxDecoration(
                             color: const Color(0xFF2F8A3C),
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           child: IconButton(
                             onPressed: service.isExecutingCommand
                                 ? null
                                 : () => _submitText(service),
-                            icon: const Icon(Icons.send, color: Colors.white, size: 18),
+                            icon: const Icon(Icons.send, color: Colors.white, size: 22),
                             tooltip: '发送',
                             splashRadius: 18,
                           ),
@@ -353,6 +443,9 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
                     ),
                   ],
                 ),
+                  ),
+                  if (_isVoicePressing && !_isTextInputMode) _buildVoicePressOverlay(),
+                ],
               );
             },
           ),

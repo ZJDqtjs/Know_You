@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -10,6 +11,7 @@ import 'agent/local_agent_service.dart';
 
 class VoiceAssistantService extends ChangeNotifier {
   static const _prefKeyEnabled = 'voice_assistant_enabled';
+  static const _asrLanguagePrefKey = 'asr_language';
   bool _isEnabled = true;
   bool _isListening = false;
   String _wakeWord = '你好，牛肉';
@@ -26,6 +28,7 @@ class VoiceAssistantService extends ChangeNotifier {
   bool _isInitializing = false;
   bool _isExecutingCommand = false;
   bool _isCloudRecording = false;
+  bool _isAgentCapturing = false;
   late final AudioRecorder _recorder;
 
   static const _permissionErrorCode = 'error_permission';
@@ -42,6 +45,7 @@ class VoiceAssistantService extends ChangeNotifier {
   String? get lastError => _lastError;
   bool get wakeWordDetected => _wakeWordDetected;
   bool get isExecutingCommand => _isExecutingCommand;
+  bool get isAgentCapturing => _isAgentCapturing;
 
   VoiceAssistantService() {
     _speechToText = stt.SpeechToText();
@@ -266,6 +270,9 @@ class VoiceAssistantService extends ChangeNotifier {
     }
 
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final asrLanguage = prefs.getString(_asrLanguagePrefKey)?.trim();
+
       _responseText = '正在识别语音...';
       notifyListeners();
 
@@ -277,7 +284,7 @@ class VoiceAssistantService extends ChangeNotifier {
 
       final form = FormData.fromMap({
         'file': await MultipartFile.fromFile(path, filename: 'audio_record.mp3'),
-        'language': '中文',
+        'language': (asrLanguage?.isNotEmpty == true) ? asrLanguage : '中文',
         'itn': 'true',
       });
 
@@ -287,11 +294,18 @@ class VoiceAssistantService extends ChangeNotifier {
         _recognizedText = text;
         _responseText = '';
         _lastError = null;
+        notifyListeners();
 
         final normalizedText = text.replaceAll(RegExp(r'[，。！？、,\.!\?\s]'), '');
         final normalizedWakeWord = _wakeWord.replaceAll(RegExp(r'[，。！？、,\.!\?\s]'), '');
         if (normalizedText.isNotEmpty && normalizedText.contains(normalizedWakeWord)) {
           onWakeWordDetected();
+        }
+
+        final prefsUser = await SharedPreferences.getInstance();
+        final userId = (prefsUser.getString('auth_user_id') ?? '').trim();
+        if (text.isNotEmpty && userId.isNotEmpty) {
+          unawaited(submitCommand(text, userId: userId));
         }
       } else {
         _lastError = '云端语音识别失败：响应异常';
@@ -334,6 +348,11 @@ class VoiceAssistantService extends ChangeNotifier {
       notifyListeners();
     };
 
+    agent.onCaptureStateChange = (capturing) {
+      _isAgentCapturing = capturing;
+      notifyListeners();
+    };
+
     try {
       await agent.runTask(task, userId: userId);
       if (_responseText == '正在发送指令...') {
@@ -343,6 +362,7 @@ class VoiceAssistantService extends ChangeNotifier {
       _responseText = '发送失败: $e';
     } finally {
       _isExecutingCommand = false;
+      _isAgentCapturing = false;
       notifyListeners();
     }
   }
@@ -375,7 +395,7 @@ class VoiceAssistantService extends ChangeNotifier {
   }
 
   /// 停止监听
-  Future<void> stopListening() async {
+  Future<void> stopListening({bool cancelRecognition = false}) async {
     try {
       if (_useCloudAsr && _isCloudRecording) {
         final path = await _recorder.stop();
@@ -383,6 +403,12 @@ class VoiceAssistantService extends ChangeNotifier {
         _isListening = false;
         _partialText = '';
         notifyListeners();
+
+        if (cancelRecognition) {
+          _responseText = '已取消本次语音输入';
+          notifyListeners();
+          return;
+        }
 
         if (path != null && path.isNotEmpty) {
           await _transcribeCloudAudio(path);
