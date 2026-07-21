@@ -8,7 +8,6 @@ class AppConfig {
   final String wsUrl;
   final String? asrBaseUrl;
   final String? agentApiUrl;
-  final String? agentServerToken;
   final Duration connectTimeout;
   final Duration receiveTimeout;
 
@@ -20,7 +19,6 @@ class AppConfig {
     required this.receiveTimeout,
     this.asrBaseUrl,
     this.agentApiUrl,
-    this.agentServerToken,
   });
 
   static const AppConfig _defaults = AppConfig(
@@ -29,7 +27,6 @@ class AppConfig {
     wsUrl: 'ws://localhost:3000/ws',
     asrBaseUrl: null,
     agentApiUrl: null,
-    agentServerToken: null,
     connectTimeout: Duration(seconds: 10),
     receiveTimeout: Duration(seconds: 10),
   );
@@ -74,32 +71,67 @@ class AppConfig {
     final wsUrl = (json['ws_url'] ?? json['wsUrl'])?.toString();
     final asrBaseUrl = (json['asr_base_url'] ?? json['asrBaseUrl'])?.toString();
     final agentApiUrl = (json['agent_api_url'] ?? json['agentApiUrl'])?.toString();
-    final agentServerToken = (json['agent_server_token'] ?? json['agentServerToken'])?.toString();
 
     final normalizedApiBaseUrl = apiBaseUrl?.trim();
     final derivedHttpBaseUrl = _deriveHttpBaseUrl(normalizedApiBaseUrl);
-    final normalizedHttpBaseUrl = (httpBaseUrl?.trim().isNotEmpty == true)
-      ? httpBaseUrl!.trim()
+    
+    String? candidateHttpBaseUrl = httpBaseUrl?.trim();
+    if (candidateHttpBaseUrl != null && candidateHttpBaseUrl.isNotEmpty) {
+      candidateHttpBaseUrl = _normalizeUrl(candidateHttpBaseUrl);
+    }
+    final normalizedHttpBaseUrl = (candidateHttpBaseUrl?.isNotEmpty == true)
+      ? candidateHttpBaseUrl!
       : (derivedHttpBaseUrl ?? _defaults.httpBaseUrl);
 
-    final normalizedWsUrl = (wsUrl?.trim().isNotEmpty == true)
-      ? wsUrl!.trim()
+    String? candidateWsUrl = wsUrl?.trim();
+    if (candidateWsUrl != null && candidateWsUrl.isNotEmpty) {
+      candidateWsUrl = _normalizeUrl(candidateWsUrl);
+    }
+    final normalizedWsUrl = (candidateWsUrl?.isNotEmpty == true)
+      ? candidateWsUrl!
       : _deriveWsUrl(normalizedHttpBaseUrl);
 
     final dio = (json['dio'] is Map) ? Map<String, dynamic>.from(json['dio'] as Map) : const <String, dynamic>{};
     final connectTimeoutSeconds = _tryParseInt(dio['connect_timeout_seconds'] ?? dio['connectTimeoutSeconds']);
     final receiveTimeoutSeconds = _tryParseInt(dio['receive_timeout_seconds'] ?? dio['receiveTimeoutSeconds']);
 
+    String? normalizedAsrBaseUrl = asrBaseUrl?.trim();
+    if (normalizedAsrBaseUrl?.isNotEmpty == true) {
+      normalizedAsrBaseUrl = _normalizeUrl(normalizedAsrBaseUrl!);
+    }
+    
+    String? normalizedAgentApiUrl = agentApiUrl?.trim();
+    if (normalizedAgentApiUrl?.isNotEmpty == true) {
+      normalizedAgentApiUrl = _normalizeUrl(normalizedAgentApiUrl!);
+    }
+
     return AppConfig(
       apiBaseUrl: normalizedApiBaseUrl?.isNotEmpty == true ? normalizedApiBaseUrl! : _defaults.apiBaseUrl,
       httpBaseUrl: normalizedHttpBaseUrl,
       wsUrl: normalizedWsUrl,
-      asrBaseUrl: asrBaseUrl?.trim().isNotEmpty == true ? asrBaseUrl!.trim() : _defaults.asrBaseUrl,
-      agentApiUrl: agentApiUrl?.trim().isNotEmpty == true ? agentApiUrl!.trim() : _defaults.agentApiUrl,
-      agentServerToken: agentServerToken?.trim().isNotEmpty == true ? agentServerToken!.trim() : _defaults.agentServerToken,
+      asrBaseUrl: normalizedAsrBaseUrl?.isNotEmpty == true ? normalizedAsrBaseUrl! : _defaults.asrBaseUrl,
+      agentApiUrl: normalizedAgentApiUrl?.isNotEmpty == true ? normalizedAgentApiUrl! : _defaults.agentApiUrl,
       connectTimeout: Duration(seconds: connectTimeoutSeconds ?? _defaults.connectTimeout.inSeconds),
       receiveTimeout: Duration(seconds: receiveTimeoutSeconds ?? _defaults.receiveTimeout.inSeconds),
     );
+  }
+
+  static String? _normalizeUrl(String url) {
+    if (url == null || url.isEmpty) return null;
+    url = url.trim();
+    while (url.contains('http://http://')) {
+      url = url.replaceAll('http://http://', 'http://');
+    }
+    while (url.contains('ws://ws://')) {
+      url = url.replaceAll('ws://ws://', 'ws://');
+    }
+    while (url.contains('https://https://')) {
+      url = url.replaceAll('https://https://', 'https://');
+    }
+    while (url.contains('wss://wss://')) {
+      url = url.replaceAll('wss://wss://', 'wss://');
+    }
+    return url;
   }
 
   static String? _deriveHttpBaseUrl(String? apiBaseUrl) {

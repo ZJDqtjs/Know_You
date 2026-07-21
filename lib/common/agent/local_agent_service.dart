@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../shizuku_service.dart';
+import '../http.dart'; 
 import '../app_config.dart';
 
 /// 飞言本地 Agent 服务（Shizuku 驱动）
@@ -11,13 +13,9 @@ class LocalAgentService {
   factory LocalAgentService() => _instance;
 
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl,
+    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl, 
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
-    headers: {
-      if ((AppConfig.currentOrDefault.agentServerToken ?? '').isNotEmpty)
-        'x-server-token': AppConfig.currentOrDefault.agentServerToken,
-    },
   ));
 
   LocalAgentService._internal();
@@ -34,9 +32,6 @@ class LocalAgentService {
   Function(String text)? onLog;
   Function(bool running)? onStateChange;
   Function(bool capturing)? onCaptureStateChange;
-
-  static const _adbKeyboardImeId = 'com.android.adbkeyboard/.AdbIME';
-  String? _originalIme;
 
   void _log(String text) {
     print('[LocalAgent] $text');
@@ -58,7 +53,6 @@ class LocalAgentService {
 
     try {
       _log('开始执行任务: $task');
-      await _ensureAdbKeyboardReady();
 
       while (!_cancelToken!.isCancelled) {
         // 1. 获取屏幕状态
@@ -81,8 +75,8 @@ class LocalAgentService {
           if (_sessionId != null) 'session_id': _sessionId,
           'screenshot_base64': screenshotBase64,
           'current_app': currentApp,
-          'screen_width': size.width.round(),
-          'screen_height': size.height.round(),
+          'screen_width': size.width,
+          'screen_height': size.height,
           if (previousResult != null) 'previous_step_result': previousResult,
         };
 
@@ -130,7 +124,6 @@ class LocalAgentService {
       _log('出现异常: $e');
     } finally {
       onCaptureStateChange?.call(false);
-      await _restoreInputMethod();
       _isRunning = false;
       onStateChange?.call(false);
     }
@@ -149,46 +142,6 @@ class LocalAgentService {
           print('Reset API failed: $e');
         }
       }
-    }
-  }
-
-  Future<void> _ensureAdbKeyboardReady() async {
-    try {
-      final currentImeRes = await ShizukuService().executeShellCommand('settings get secure default_input_method');
-      if (currentImeRes['success'] == true) {
-        final currentIme = (currentImeRes['output'] ?? '').toString().trim();
-        if (currentIme.isNotEmpty) {
-          _originalIme = currentIme;
-        }
-      }
-
-      final pkgRes = await ShizukuService().executeShellCommand('pm path com.android.adbkeyboard');
-      final output = (pkgRes['output'] ?? '').toString();
-      final installed = pkgRes['success'] == true && output.contains('package:');
-      if (!installed) {
-        _log('未检测到ADBKeyBoard（com.android.adbkeyboard），请先安装并启用');
-        return;
-      }
-
-      await ShizukuService().executeShellCommand('ime enable $_adbKeyboardImeId');
-      final setRes = await ShizukuService().executeShellCommand('ime set $_adbKeyboardImeId');
-      if (setRes['success'] == true) {
-        _log('已切换到ADBKeyBoard输入法');
-      } else {
-        _log('ADBKeyBoard启用失败，请在系统中手动启用输入法');
-      }
-    } catch (e) {
-      _log('检查ADBKeyBoard失败: $e');
-    }
-  }
-
-  Future<void> _restoreInputMethod() async {
-    final ime = _originalIme;
-    if (ime == null || ime.isEmpty || ime == _adbKeyboardImeId) return;
-    try {
-      await ShizukuService().executeShellCommand('ime set $ime');
-    } catch (_) {
-      // ignore restore failure
     }
   }
 
@@ -293,6 +246,10 @@ class LocalAgentService {
       if (ca is Map && ca['type'] == 'restore_input_method') {
         // ... (可选) 恢复输入法逻辑
         clientResults.add({'type': 'restore_input_method', 'ok': true});
+      } else if (ca is Map && ca['type'] == 'input_text') {
+        final text = ca['text']?.toString() ?? '';
+        final ok = await _pasteText(text);
+        clientResults.add({'type': 'input_text', 'ok': ok});
       } else if (ca is Map && ca['type'] == 'delay') {
         final delayMs = ca['duration_ms'] ?? 1000;
         await Future.delayed(Duration(milliseconds: delayMs));
@@ -308,5 +265,42 @@ class LocalAgentService {
       'commands': commandResults,
       'client_actions': clientResults,
     };
+  }
+
+  Future<bool> _pasteText(String text) async {
+    if (text.trim().isEmpty) return false;
+
+    final clipboardText = _escapeShellText(text);
+    final setClipboard = await ShizukuService().executeShellCommand(
+      'cmd clipboard set "$clipboardText"',
+    );
+
+    if (setClipboard['success'] == true) {
+      final pasteRes = await ShizukuService().executeShellCommand('input keyevent 279');
+      return pasteRes['success'] == true;
+    }
+
+    final inputText = _escapeInputText(text);
+    final inputRes = await ShizukuService().executeShellCommand('input text "$inputText"');
+    return inputRes['success'] == true;
+  }
+
+  String _escapeShellText(String text) {
+    return text
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', ' ')
+        .replaceAll('\r', ' ');
+  }
+
+  String _escapeInputText(String text) {
+    return text
+        .replaceAll(' ', '%s')
+        .replaceAll('&', '\\&')
+        .replaceAll('<', '\\<')
+        .replaceAll('>', '\\>')
+        .replaceAll('"', '\\"')
+        .replaceAll("'", "\\'")
+        .replaceAll('\\', '\\\\');
   }
 }
