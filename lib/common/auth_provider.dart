@@ -34,6 +34,7 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('Load user failed: $e');
+      await logout();
     }
   }
 

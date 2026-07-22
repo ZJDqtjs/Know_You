@@ -137,7 +137,7 @@ class _MinePageState extends State<MinePage> {
             // Avatar & Name
             GestureDetector(
               onTap: () {
-                if (user == null) {
+                if (!auth.isLoggedIn) {
                   Fluttertoast.showToast(msg: '请先登录');
                   return;
                 }
