@@ -121,7 +121,7 @@ class NotificationService extends ChangeNotifier {
 
         switch (type) {
           case 'auth_success':
-            print('[Notification] Auth success: ${payload['userId']}');
+            print('[Notification] Auth success: ${payload['user_id'] ?? payload['userId']}');
             break;
           case 'auth_failed':
             print('[Notification] Auth failed');
@@ -143,9 +143,9 @@ class NotificationService extends ChangeNotifier {
   }
 
   void _handleScreenSessionRequest(dynamic data) {
-    final sessionId = data['sessionId'];
-    final initiatorUser = data['initiatorUser'];
-    final initiatorUserId = data['initiatorUserId'];
+    final sessionId = data['session_id'] ?? data['sessionId'];
+    final initiatorUser = data['initiator_user'] ?? data['initiatorUser'];
+    final initiatorUserId = data['initiator_user_id'] ?? data['initiatorUserId'];
     final displayName = initiatorUser?['nickname'] ?? initiatorUser?['username'] ?? 'User $initiatorUserId';
 
     showDialog(
@@ -174,9 +174,9 @@ class NotificationService extends ChangeNotifier {
   }
 
   void _handleBindingRequest(dynamic data) {
-    final bindingId = data['bindingId'];
-    final initiatorUser = data['initiatorUser'];
-    final initiatorUserId = data['initiatorUserId'];
+    final bindingId = data['binding_id'] ?? data['bindingId'];
+    final initiatorUser = data['initiator_user'] ?? data['initiatorUser'];
+    final initiatorUserId = data['initiator_user_id'] ?? data['initiatorUserId'];
     final displayName = initiatorUser?['nickname'] ?? initiatorUser?['username'] ?? 'User $initiatorUserId';
 
     showDialog(

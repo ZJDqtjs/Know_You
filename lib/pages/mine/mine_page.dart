@@ -85,7 +85,7 @@ class _MinePageState extends State<MinePage> {
 
   Future<void> _confirmUnlink(dynamic binding, String userName) async {
     final bindingId = binding is Map
-        ? (binding['id'] ?? binding['bindingId'] ?? binding['binding_id'])
+        ? (binding['binding_id'] ?? binding['id'] ?? binding['bindingId'])
         : binding;
     if (bindingId == null) {
       Fluttertoast.showToast(msg: '未找到绑定信息');
@@ -157,7 +157,10 @@ class _MinePageState extends State<MinePage> {
                         ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString()))
                         : null,
                     child: avatarUrl == null || avatarUrl.toString().isEmpty
-                        ? Icon(Icons.person, size: 40.w, color: Colors.white)
+                        ? Text(
+                            nickname[0].toUpperCase(),
+                            style: TextStyle(fontSize: 32.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                          )
                         : null,
                   ),
                   SizedBox(height: 10.h),
@@ -219,7 +222,7 @@ class _MinePageState extends State<MinePage> {
                             separatorBuilder: (context, index) => SizedBox(width: 12.w),
                             itemBuilder: (context, index) {
                               final binding = _myInitiatorBindings[index];
-                              final user = binding['targetUser'] ?? binding['targetUserInfo'];
+                              final user = binding['target_user'] ?? binding['targetUser'] ?? binding['targetUserInfo'];
                               return _buildAvatarItem(
                                 user,
                                 onTap: () => _confirmUnlink(binding, _getUserName(user)),
@@ -247,7 +250,7 @@ class _MinePageState extends State<MinePage> {
                             separatorBuilder: (context, index) => SizedBox(width: 12.w),
                             itemBuilder: (context, index) {
                               final binding = _myTargetBindings[index];
-                              final user = binding['initiatorUser'] ?? binding['initiatorUserInfo'];
+                              final user = binding['initiator_user'] ?? binding['initiatorUser'] ?? binding['initiatorUserInfo'];
                               return _buildAvatarItem(
                                 user,
                                 onTap: () => _confirmUnlink(binding, _getUserName(user)),

@@ -22,7 +22,7 @@ class AuthApi {
 
   Future<dynamic> register(Map<String, dynamic> payload) => _http.post('/auth/register', data: payload);
   Future<dynamic> login(Map<String, dynamic> payload) => _http.post('/auth/login', data: payload);
-  Future<dynamic> refresh(String refreshToken) => _http.post('/auth/refresh', data: {'refreshToken': refreshToken});
+  Future<dynamic> refresh(String refreshToken) => _http.post('/auth/refresh', data: {'refresh_token': refreshToken});
   Future<dynamic> me() => _http.get('/users/me');
   Future<dynamic> updateMe(Map<String, dynamic> payload) => _http.put('/users/me', data: payload);
   Future<dynamic> uploadAvatar(String filePath) => _http.uploadFile('/files/upload', filePath);
@@ -33,11 +33,11 @@ class BindingsApi {
   BindingsApi(this._http);
 
   Future<dynamic> list([String? role]) => _http.get('/bindings', params: role != null ? {'role': role} : null);
-  Future<dynamic> createRequest(int targetUserId) => _http.post('/bindings', data: {'targetUserId': targetUserId});
+  Future<dynamic> createRequest(int targetUserId) => _http.post('/bindings', data: {'target_user_id': targetUserId});
   Future<dynamic> accept(int bindingId) => _http.post('/bindings/$bindingId/accept');
   Future<dynamic> reject(int bindingId) => _http.post('/bindings/$bindingId/reject');
-  Future<dynamic> unlink(int bindingId) => _http.delete('/bindings/$bindingId', data: {});
-  Future<dynamic> genCode() => _http.post('/bindings/link-code', data: {});
+  Future<dynamic> unlink(int bindingId) => _http.delete('/bindings/$bindingId');
+  Future<dynamic> genCode() => _http.post('/bindings/link-code');
   Future<dynamic> useCode(String code) => _http.post('/bindings/link', data: {'code': code});
 }
 
@@ -62,9 +62,9 @@ class DevicesApi {
   final HttpService _http;
   DevicesApi(this._http);
 
-  Future<dynamic> list(int userId) => _http.get('/devices', params: {'userId': userId});
+  Future<dynamic> list(int userId) => _http.get('/devices', params: {'user_id': userId});
   Future<dynamic> detail(int id) => _http.get('/devices/$id');
-  Future<dynamic> toggle(int id, bool state) => _http.post('/devices/$id/toggle', data: {'state': state});
+  Future<dynamic> toggle(int id, String state) => _http.post('/devices/$id/toggle', data: {'state': state});
   Future<dynamic> command(int id, String command, Map<String, dynamic> payload) => 
       _http.post('/devices/$id/commands', data: {'command': command, 'payload': payload});
 }
@@ -74,7 +74,7 @@ class ScreenApi {
   ScreenApi(this._http);
 
   Future<dynamic> createSession(dynamic targetUserId) => 
-      _http.post('/screen-sessions', data: {'targetUserId': targetUserId is String ? int.tryParse(targetUserId) : targetUserId});
+      _http.post('/screen-sessions', data: {'target_user_id': targetUserId is String ? int.tryParse(targetUserId) : targetUserId});
   Future<dynamic> accept(String sid) => _http.post('/screen-sessions/$sid/accept');
   Future<dynamic> reject(String sid) => _http.post('/screen-sessions/$sid/reject');
   Future<dynamic> close(String sid) => _http.post('/screen-sessions/$sid/close');
@@ -90,7 +90,7 @@ class SchedulesApi {
   SchedulesApi(this._http);
 
   Future<dynamic> create(Map<String, dynamic> payload) => _http.post('/schedules', data: payload);
-  Future<dynamic> list(int userId) => _http.get('/schedules', params: {'userId': userId});
+  Future<dynamic> list(int userId) => _http.get('/schedules', params: {'user_id': userId});
   Future<dynamic> update(int id, Map<String, dynamic> payload) => _http.put('/schedules/$id', data: payload);
   Future<dynamic> remove(int id) => _http.delete('/schedules/$id');
 }
@@ -100,8 +100,8 @@ class LogsApi {
   LogsApi(this._http);
 
   Future<dynamic> control(int userId, {int page = 1, int pageSize = 20}) => 
-      _http.get('/logs/control', params: {'userId': userId, 'page': page, 'pageSize': pageSize});
-  Future<dynamic> healthAccess(int userId) => _http.get('/logs/health-access', params: {'userId': userId});
+      _http.get('/logs/control', params: {'user_id': userId, 'page': page, 'page_size': pageSize});
+  Future<dynamic> healthAccess(int userId) => _http.get('/logs/health-access', params: {'user_id': userId});
 }
 
 class CommunityApi {
@@ -109,10 +109,10 @@ class CommunityApi {
   CommunityApi(this._http);
 
   Future<dynamic> listPosts({int page = 1, int pageSize = 20, String sort = 'time'}) =>
-      _http.get('/community/posts', params: {'page': page, 'pageSize': pageSize, 'sort': sort});
+      _http.get('/community/posts', params: {'page': page, 'page_size': pageSize, 'sort': sort});
 
     Future<dynamic> listMyPosts({int page = 1, int pageSize = 20, String sort = 'time'}) =>
-      _http.get('/community/posts/mine', params: {'page': page, 'pageSize': pageSize, 'sort': sort});
+      _http.get('/community/posts/mine', params: {'page': page, 'page_size': pageSize, 'sort': sort});
 
   Future<dynamic> getPost(int postId) => _http.get('/community/posts/$postId');
 
@@ -120,23 +120,23 @@ class CommunityApi {
       _http.post('/community/posts', data: {
         'title': title,
         'content': content,
-        'voiceUrl': voiceUrl,
-        'voiceDuration': voiceDuration,
-        'imageUrls': imageUrls,
+        'voice_url': voiceUrl,
+        'voice_duration': voiceDuration,
+        'image_urls': imageUrls,
       });
 
   Future<dynamic> deletePost(int postId) => _http.delete('/community/posts/$postId');
 
-  Future<dynamic> toggleLike(int postId) => _http.post('/community/posts/$postId/like', data: {});
+  Future<dynamic> toggleLike(int postId) => _http.post('/community/posts/$postId/like');
 
   Future<dynamic> listComments(int postId, {int page = 1, int pageSize = 20}) =>
-      _http.get('/community/posts/$postId/comments', params: {'page': page, 'pageSize': pageSize});
+      _http.get('/community/posts/$postId/comments', params: {'page': page, 'page_size': pageSize});
 
   Future<dynamic> addComment(int postId, {String? content, String? voiceUrl, int? voiceDuration}) =>
       _http.post('/community/posts/$postId/comments', data: {
         'content': content,
-        'voiceUrl': voiceUrl,
-        'voiceDuration': voiceDuration,
+        'voice_url': voiceUrl,
+        'voice_duration': voiceDuration,
       });
 }
 
@@ -149,9 +149,9 @@ class MallApi {
   Future<dynamic> listProducts({int page = 1, int pageSize = 20, String? keyword, int? categoryId}) =>
       _http.get('/mall/products', params: {
         'page': page,
-        'pageSize': pageSize,
+        'page_size': pageSize,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
-        if (categoryId != null) 'categoryId': categoryId,
+        if (categoryId != null) 'category_id': categoryId,
       });
 
   Future<dynamic> createProduct(Map<String, dynamic> data) => _http.post('/mall/products', data: data);
@@ -161,7 +161,7 @@ class MallApi {
   Future<dynamic> listOrders({int page = 1, int pageSize = 20, String? status}) =>
       _http.get('/mall/orders', params: {
         'page': page,
-        'pageSize': pageSize,
+        'page_size': pageSize,
         if (status != null && status.isNotEmpty) 'status': status,
       });
 }
@@ -173,13 +173,13 @@ class RecommendationApi {
   Future<dynamic> listRecommendedPosts({int page = 1, int pageSize = 20}) =>
       _http.get('/recommendations/posts', params: {
         'page': page,
-        'pageSize': pageSize,
+        'page_size': pageSize,
       });
 
   Future<dynamic> listRecommendedProducts({int page = 1, int pageSize = 20}) =>
       _http.get('/recommendations/products', params: {
         'page': page,
-        'pageSize': pageSize,
+        'page_size': pageSize,
       });
 
   Future<dynamic> getProfile() => _http.get('/recommendations/profile');
@@ -193,11 +193,11 @@ class RecommendationApi {
     List<String>? tags,
     Map<String, dynamic>? payload,
   }) =>
-      _http.post('/recommendations/events', data: {
+      _http.post('/recommendations/event', data: {
         'scene': scene,
         'action': action,
-        'targetType': targetType,
-        if (targetId != null) 'targetId': targetId,
+        'target_type': targetType,
+        if (targetId != null) 'target_id': targetId,
         if (keyword != null && keyword.isNotEmpty) 'keyword': keyword,
         if (tags != null && tags.isNotEmpty) 'tags': tags,
         if (payload != null) 'payload': payload,

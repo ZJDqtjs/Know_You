@@ -83,7 +83,7 @@ class _VoiceAssistantDialogState extends State<VoiceAssistantDialog>
 
   Future<String> _resolveUserId() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    final dynamic rawId = auth.user?['id'] ?? auth.user?['userId'];
+    final dynamic rawId = auth.user?['id'] ?? auth.user?['user_id'] ?? auth.user?['userId'];
     var userId = rawId?.toString() ?? '';
     if (userId.isEmpty) {
       final prefs = await SharedPreferences.getInstance();

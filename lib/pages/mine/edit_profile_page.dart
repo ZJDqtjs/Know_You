@@ -231,7 +231,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(_avatarUrl!))
                             : null,
                         child: _avatarUrl == null || _avatarUrl!.isEmpty
-                            ? Icon(Icons.person, size: 50.w, color: Colors.white)
+                            ? Text(
+                                (_nicknameController.text.isNotEmpty ? _nicknameController.text : 'User')[0].toUpperCase(),
+                                style: TextStyle(fontSize: 36.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                              )
                             : null,
                       ),
                       Positioned(

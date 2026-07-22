@@ -107,19 +107,17 @@ class HttpService {
     try {
       // Create a new Dio instance to avoid interceptor loop
       final tokenDio = Dio(BaseOptions(baseUrl: AppConfig.currentOrDefault.apiBaseUrl));
-      final response = await tokenDio.post('/auth/refresh', data: {'refreshToken': refreshToken});
+      final response = await tokenDio.post('/auth/refresh', data: {'refresh_token': refreshToken});
       
       if (response.data['code'] == 0) {
         final data = response.data['data'];
-        await _setTokens(data['accessToken'], null); // Usually refresh token is not rotated, or is it? The JS code sets access only.
+        await _setTokens(data['access_token'], null);
         
-        // Retry original request
         final opts = Options(
           method: requestOptions.method,
           headers: requestOptions.headers,
         );
-        // Update token in headers
-        opts.headers?['Authorization'] = 'Bearer ${data['accessToken']}';
+        opts.headers?['Authorization'] = 'Bearer ${data['access_token']}';
         
         _isRefreshing = false;
         return _dio.request(
@@ -195,12 +193,25 @@ class HttpService {
         if (body['code'] == 0) {
           return body['data'];
         } else {
-           throw Exception(body['message'] ?? 'Request failed with code ${body['code']}');
+          if (body['code'] == 4010) {
+            throw DioException(
+              requestOptions: response.requestOptions,
+              response: response,
+              error: body['message'] ?? 'Authentication failed',
+              type: DioExceptionType.badResponse,
+            );
+          }
+          throw Exception(body['message'] ?? 'Request failed with code ${body['code']}');
         }
       }
       return body;
     } else {
-      throw Exception('Network error: ${response.statusCode}');
+      throw DioException(
+        requestOptions: response.requestOptions,
+        response: response,
+        error: 'Network error: ${response.statusCode}',
+        type: DioExceptionType.badResponse,
+      );
     }
   }
 }

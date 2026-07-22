@@ -102,8 +102,8 @@ class _ListingProductPageState extends State<ListingProductPage> {
             'price': double.tryParse(_priceController.text) ?? 0,
             'desc': _descController.text,
             'stock': int.tryParse(_stockController.text) ?? 0,
-            'imageUrl': _imageUrl,
-            'categoryId': _selectedCategoryId,
+            'image_url': _imageUrl,
+            'category_id': _selectedCategoryId,
         });
         Fluttertoast.showToast(msg: '发布成功');
         if (mounted) Navigator.pop(context);

@@ -41,14 +41,14 @@ class AuthProvider extends ChangeNotifier {
   Future<void> login(String username, String password) async {
     try {
       final res = await Api.auth.login({'username': username, 'password': password});
-      final accessToken = res['accessToken'];
-      final refreshToken = res['refreshToken'];
+      final accessToken = res['access_token'];
+      final refreshToken = res['refresh_token'];
       final user = res['user'];
       
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_access_token', accessToken);
       await prefs.setString('auth_refresh_token', refreshToken);
-      final dynamic rawUserId = user?['id'] ?? user?['userId'];
+      final dynamic rawUserId = user?['id'] ?? user?['user_id'];
       if (rawUserId != null) {
         await prefs.setString(_prefUserIdKey, rawUserId.toString());
       }
@@ -88,7 +88,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> _persistUserId(Map<String, dynamic>? user) async {
-    final dynamic rawUserId = user?['id'] ?? user?['userId'];
+    final dynamic rawUserId = user?['id'] ?? user?['user_id'];
     if (rawUserId == null) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefUserIdKey, rawUserId.toString());

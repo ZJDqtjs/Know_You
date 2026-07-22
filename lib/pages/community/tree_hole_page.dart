@@ -139,9 +139,10 @@ class _TreeHolePageState extends State<TreeHolePage> {
         : (() {
             final c = post['content']?.toString().trim() ?? '';
             if (c.isNotEmpty) return c.length > 20 ? '${c.substring(0, 20)}...' : c;
-            if (post['hasVoice'] == true) return '语音动态';
+            if (post['has_voice'] == true || post['hasVoice'] == true) return '语音动态';
             return '';
           })();
+    final postImages = post['images'] ?? post['image_urls'] ?? [];
     return GestureDetector(
       onTap: () async {
         final postId = post['id'];
@@ -183,10 +184,16 @@ class _TreeHolePageState extends State<TreeHolePage> {
             children: [
               CircleAvatar(
                 radius: 20.r,
-                backgroundImage: _buildAvatarProvider(avatar),
-                // Fallback icon if image fails
-                onBackgroundImageError: (_, __) {},
-                child: avatar == null ? const Icon(Icons.person) : null,
+                backgroundColor: const Color(0xFFE1BEE7),
+                backgroundImage: avatar is String && avatar.isNotEmpty
+                    ? NetworkImage(_resolveUrl(avatar))
+                    : null,
+                child: avatar == null || !(avatar is String && avatar.isNotEmpty)
+                    ? Text(
+                        (username.isNotEmpty ? username : 'U')[0].toUpperCase(),
+                        style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                      )
+                    : null,
               ),
               SizedBox(width: 12.w),
               Column(
@@ -225,17 +232,17 @@ class _TreeHolePageState extends State<TreeHolePage> {
               ),
             ),
           
-          if ((post['images'] is List) && (post['images'] as List).isNotEmpty) ...[
+          if (postImages is List && postImages.isNotEmpty) ...[
             SizedBox(height: 8.h),
-            _buildImageGrid((post['images'] as List).cast<String>()),
+            _buildImageGrid(postImages.cast<String>()),
           ],
 
           // Voice Player Placeholder
-          if (post['hasVoice'] == true) ...[
+          if (post['has_voice'] == true || post['hasVoice'] == true) ...[
             SizedBox(height: 12.h),
             _VoicePlayer(
-              voiceUrl: _resolveUrl(post['voiceUrl']),
-              duration: post['voiceDuration'],
+              voiceUrl: _resolveUrl(post['voice_url'] ?? post['voiceUrl']),
+              duration: post['voice_duration'] ?? post['voiceDuration'],
             ),
           ],
           
@@ -308,13 +315,6 @@ class _TreeHolePageState extends State<TreeHolePage> {
 
   String _resolveUrl(String? path) {
     return AppConfig.currentOrDefault.resolveHttpUrl(path);
-  }
-
-  ImageProvider _buildAvatarProvider(dynamic avatar) {
-    if (avatar is String && avatar.isNotEmpty) {
-      return NetworkImage(_resolveUrl(avatar));
-    }
-    return const AssetImage('assets/images/user.png');
   }
 
   String _formatTime(dynamic value) {
