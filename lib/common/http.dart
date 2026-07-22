@@ -3,6 +3,16 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app_config.dart';
 
+class ApiException implements Exception {
+  final int code;
+  final String message;
+
+  ApiException(this.code, this.message);
+
+  @override
+  String toString() => message;
+}
+
 class HttpService {
   static const String _accessTokenKey = 'auth_access_token';
   static const String _refreshTokenKey = 'auth_refresh_token';
@@ -37,8 +47,11 @@ class HttpService {
         return handler.next(options);
       },
       onError: (DioException e, handler) async {
+        final path = e.requestOptions.path;
+        if (path == '/auth/login') {
+          return handler.next(e);
+        }
         if (e.response?.statusCode == 401 || (e.response?.data is Map && e.response?.data['code'] == 4010)) {
-          // Token expired, try to refresh
           try {
             final result = await _handle401AndRetry(e.requestOptions);
             return handler.resolve(result);
@@ -49,15 +62,23 @@ class HttpService {
         return handler.next(e);
       },
       onResponse: (response, handler) {
-        if (response.data is Map && response.data['code'] != 0) {
-           // Handle business errors if needed, but for now just pass through
-           // The original code rejects if code != 0
-           if (response.data['code'] == 4010) {
-              // This should be caught by onError usually if status is 401, but sometimes it returns 200 with error code
-              // If it returns 200 OK but code is 4010, we need to handle it here or in the caller.
-              // To match original logic:
-              // if (body.code === 4010) -> handle401AndRetry
-           }
+        final path = response.requestOptions.path;
+        if (path == '/auth/login') {
+          return handler.next(response);
+        }
+        if (response.statusCode == 200 && response.data is Map && response.data['code'] == 4010) {
+          final options = response.requestOptions;
+          _handle401AndRetry(options).then((result) {
+            handler.resolve(result);
+          }).catchError((err) {
+            handler.reject(DioException(
+              requestOptions: options,
+              response: response,
+              error: err,
+              type: DioExceptionType.badResponse,
+            ));
+          });
+          return;
         }
         return handler.next(response);
       }
@@ -193,25 +214,14 @@ class HttpService {
         if (body['code'] == 0) {
           return body['data'];
         } else {
-          if (body['code'] == 4010) {
-            throw DioException(
-              requestOptions: response.requestOptions,
-              response: response,
-              error: body['message'] ?? 'Authentication failed',
-              type: DioExceptionType.badResponse,
-            );
-          }
-          throw Exception(body['message'] ?? 'Request failed with code ${body['code']}');
+          final code = body['code'] is int ? body['code'] : int.tryParse(body['code'].toString()) ?? 5000;
+          final message = body['message']?.toString() ?? '请求失败';
+          throw ApiException(code, message);
         }
       }
       return body;
     } else {
-      throw DioException(
-        requestOptions: response.requestOptions,
-        response: response,
-        error: 'Network error: ${response.statusCode}',
-        type: DioExceptionType.badResponse,
-      );
+      throw ApiException(response.statusCode ?? 5000, '网络错误: ${response.statusCode}');
     }
   }
 }
