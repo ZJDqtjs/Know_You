@@ -71,6 +71,19 @@ flutter run
 
 项目处于持续开发中，接口与页面细节可能调整。
 
+## 第三方开源组件与协议说明
+
+项目当前用到的重点第三方组件（以仓库内配置为准）：
+
+- `flutter_webrtc`（`pubspec.yaml`）及其相关 WebRTC 组件
+- `dev.rikka.shizuku:api`、`dev.rikka.shizuku:provider`（`android/app/build.gradle.kts`）
+
+这些组件通常采用宽松协议（如 MIT / BSD / Apache-2.0）发布，一般不会强制你把项目改成同类开源协议；但你仍需遵守各自许可证义务，至少包括：
+
+- 在发行版或仓库中保留第三方版权与许可证声明
+- 不移除上游要求保留的 NOTICE / LICENSE 信息（如有）
+- 关注你后续新增依赖是否引入更严格的 copyleft 约束
+
 ## 开源协议
 
 本项目采用 **MIT License**，详见 `/home/runner/work/Know_You/Know_You/LICENSE`。
