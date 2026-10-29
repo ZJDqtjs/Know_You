@@ -1,9 +1,9 @@
 {
-  "api_base_url": "http://192.168.84.38:3000/api/v1",
-  "http_base_url": "http://192.168.84.38:3000",
-  "ws_url": "ws://192.168.84.38:3000/ws",
-  "asr_base_url": "http://192.168.84.38:8000",
-  "agent_api_url": "http://192.168.84.38:8002",
+  "api_base_url": "http://10.38.80.139:3000/api/v1",
+  "http_base_url": "http://10.38.80.139:3000",
+  "ws_url": "ws://10.38.80.139:3000/ws",
+  "asr_base_url": "http://10.38.80.139:8000",
+  "agent_api_url": "http://10.38.80.139:8002",
   "agent_server_token": "",
   "dio": {
     "connect_timeout_seconds": 10,

@@ -336,7 +336,10 @@ class _IndexPageState extends State<IndexPage> {
                         ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString())) 
                         : null,
                     child: avatarUrl == null || avatarUrl.toString().isEmpty
-                        ? Icon(Icons.person, size: 24.w, color: Colors.white)
+                        ? Text(
+                            userName[0].toUpperCase(),
+                            style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                          )
                         : null,
                   ),
                   SizedBox(width: 12.w,height: 20.h,),

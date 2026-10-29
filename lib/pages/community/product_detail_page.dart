@@ -50,7 +50,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   Widget build(BuildContext context) {
     final product = _product ?? widget.product;
-    final imageUrl = product['imageUrl'];
+    final imageUrl = product['image_url'] ?? product['imageUrl'];
     return Scaffold(
       appBar: AppBar(
         title: const Text('商品详情'),
@@ -135,7 +135,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         Row(
                           children: [
                             Text(
-                              '已售 ${product['soldCount'] ?? 0}+',
+                              '已售 ${product['sold_count'] ?? product['soldCount'] ?? 0}+',
                               style: TextStyle(color: Colors.grey, fontSize: 12.sp),
                             ),
                             const Spacer(),

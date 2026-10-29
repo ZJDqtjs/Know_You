@@ -110,7 +110,7 @@ class _PostManagePageState extends State<PostManagePage> {
 
   Widget _buildItem(Map<String, dynamic> post) {
     final title = post['title'] ?? '未命名';
-    final content = post['content'] ?? (post['hasVoice'] == true ? '语音内容' : '');
+    final content = post['content'] ?? ((post['has_voice'] == true || post['hasVoice'] == true) ? '语音内容' : '');
     final images = (post['images'] is List) ? (post['images'] as List).cast<String>() : <String>[];
     return Container(
       padding: EdgeInsets.all(12.w),

@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../shizuku_service.dart';
+import '../http.dart'; 
 import '../app_config.dart';
 
 /// 飞言本地 Agent 服务（Shizuku 驱动）
@@ -11,13 +13,9 @@ class LocalAgentService {
   factory LocalAgentService() => _instance;
 
   final Dio _dio = Dio(BaseOptions(
-    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl,
+    baseUrl: AppConfig.currentOrDefault.agentApiUrl ?? AppConfig.currentOrDefault.apiBaseUrl, 
     connectTimeout: const Duration(seconds: 30),
     receiveTimeout: const Duration(seconds: 60),
-    headers: {
-      if ((AppConfig.currentOrDefault.agentServerToken ?? '').isNotEmpty)
-        'x-server-token': AppConfig.currentOrDefault.agentServerToken,
-    },
   ));
 
   LocalAgentService._internal();
@@ -33,6 +31,7 @@ class LocalAgentService {
   /// 回调：用于向 UI 更新状态和日志
   Function(String text)? onLog;
   Function(bool running)? onStateChange;
+  Function(bool capturing)? onCaptureStateChange;
 
   void _log(String text) {
     print('[LocalAgent] $text');
@@ -57,7 +56,10 @@ class LocalAgentService {
 
       while (!_cancelToken!.isCancelled) {
         // 1. 获取屏幕状态
+        onCaptureStateChange?.call(true);
+        await Future.delayed(const Duration(milliseconds: 120));
         final screenshotBase64 = await _captureScreenBase64();
+        onCaptureStateChange?.call(false);
         final currentApp = await _detectCurrentApp();
         final size = await _getScreenSize();
 
@@ -73,8 +75,8 @@ class LocalAgentService {
           if (_sessionId != null) 'session_id': _sessionId,
           'screenshot_base64': screenshotBase64,
           'current_app': currentApp,
-          'screen_width': size.width.round(),
-          'screen_height': size.height.round(),
+          'screen_width': size.width,
+          'screen_height': size.height,
           if (previousResult != null) 'previous_step_result': previousResult,
         };
 
@@ -121,6 +123,7 @@ class LocalAgentService {
     } catch (e) {
       _log('出现异常: $e');
     } finally {
+      onCaptureStateChange?.call(false);
       _isRunning = false;
       onStateChange?.call(false);
     }
@@ -243,6 +246,10 @@ class LocalAgentService {
       if (ca is Map && ca['type'] == 'restore_input_method') {
         // ... (可选) 恢复输入法逻辑
         clientResults.add({'type': 'restore_input_method', 'ok': true});
+      } else if (ca is Map && ca['type'] == 'input_text') {
+        final text = ca['text']?.toString() ?? '';
+        final ok = await _pasteText(text);
+        clientResults.add({'type': 'input_text', 'ok': ok});
       } else if (ca is Map && ca['type'] == 'delay') {
         final delayMs = ca['duration_ms'] ?? 1000;
         await Future.delayed(Duration(milliseconds: delayMs));
@@ -258,5 +265,42 @@ class LocalAgentService {
       'commands': commandResults,
       'client_actions': clientResults,
     };
+  }
+
+  Future<bool> _pasteText(String text) async {
+    if (text.trim().isEmpty) return false;
+
+    final clipboardText = _escapeShellText(text);
+    final setClipboard = await ShizukuService().executeShellCommand(
+      'cmd clipboard set "$clipboardText"',
+    );
+
+    if (setClipboard['success'] == true) {
+      final pasteRes = await ShizukuService().executeShellCommand('input keyevent 279');
+      return pasteRes['success'] == true;
+    }
+
+    final inputText = _escapeInputText(text);
+    final inputRes = await ShizukuService().executeShellCommand('input text "$inputText"');
+    return inputRes['success'] == true;
+  }
+
+  String _escapeShellText(String text) {
+    return text
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', ' ')
+        .replaceAll('\r', ' ');
+  }
+
+  String _escapeInputText(String text) {
+    return text
+        .replaceAll(' ', '%s')
+        .replaceAll('&', '\\&')
+        .replaceAll('<', '\\<')
+        .replaceAll('>', '\\>')
+        .replaceAll('"', '\\"')
+        .replaceAll("'", "\\'")
+        .replaceAll('\\', '\\\\');
   }
 }
