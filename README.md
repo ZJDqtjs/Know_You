@@ -206,20 +206,18 @@ API 配置文件位于 `assets/config/api_config.json`，包含：
 - 其他服务配置
 
 
-## 第三方开源组件与协议说明（我的说明）
+## 第三方开源组件与协议说明
 
-我当前重点使用并关注的第三方组件（以仓库配置为准）是：
+项目当前用到的重点第三方组件（以仓库内配置为准）：
 
 - `flutter_webrtc`（`pubspec.yaml`）及其相关 WebRTC 组件
 - `dev.rikka.shizuku:api`、`dev.rikka.shizuku:provider`（`android/app/build.gradle.kts`）
 
-结合我目前用到的这些依赖，它们通常采用宽松协议（如 MIT / BSD / Apache-2.0）发布，一般不会强制我把整个项目改成同类开源协议。
-
-但我在发布或维护项目时，仍会遵守这些基础义务：
+这些组件通常采用宽松协议（如 MIT / BSD / Apache-2.0）发布，一般不会强制你把项目改成同类开源协议；但你仍需遵守各自许可证义务，至少包括：
 
 - 在发行版或仓库中保留第三方版权与许可证声明
 - 不移除上游要求保留的 NOTICE / LICENSE 信息（如有）
-- 关注后续新增依赖是否引入更严格的 copyleft 约束
+- 关注你后续新增依赖是否引入更严格的 copyleft 约束
 
 ## 注意事项
 
@@ -228,4 +226,3 @@ API 配置文件位于 `assets/config/api_config.json`，包含：
 3. **Shizuku**：无障碍保活功能需要安装 Shizuku 服务
 4. **语音引擎**：屏幕朗读需要安装 TTS 语音引擎（如 Google 文字转语音）
 5. **API字段规范**：前端 API 请求/响应字段使用 snake\_case 格式
-
