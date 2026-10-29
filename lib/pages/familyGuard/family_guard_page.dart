@@ -94,10 +94,11 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
         list = res['list'];
       }
 
-      // Extract target users
       List<dynamic> members = [];
       for (var item in list) {
-        if (item['targetUser'] != null) {
+        if (item['target_user'] != null) {
+          members.add(item['target_user']);
+        } else if (item['targetUser'] != null) {
           members.add(item['targetUser']);
         } else if (item['targetUserInfo'] != null) {
           members.add(item['targetUserInfo']);
@@ -286,7 +287,10 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                                                       ? NetworkImage(AppConfig.currentOrDefault.resolveHttpUrl(avatarUrl.toString()))
                                                       : null,
                                                   child: avatarUrl == null || avatarUrl.toString().isEmpty
-                                                      ? const Icon(Icons.person, color: Colors.white)
+                                                      ? Text(
+                                                          name[0].toUpperCase(),
+                                                          style: TextStyle(fontSize: 20.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                                                        )
                                                       : null,
                                                 ),
                                               ),
@@ -389,11 +393,11 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
               SizedBox(height: 10.h),
               _buildHealthRow(Icons.directions_walk, '今日步数', _formatSteps(health?['steps']), const Color(0xFF43A047)),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.bedtime, '睡眠时长', _formatSleepHours(health?['sleepHours']), const Color(0xFF9C27B0)),
+              _buildHealthRow(Icons.bedtime, '睡眠时长', _formatSleepHours(health?['sleep_hours']), const Color(0xFF9C27B0)),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.favorite, '血压', _formatBloodPressure(health?['bloodPressure']), const Color(0xFFEF5350),multilineValue:true,),
+              _buildHealthRow(Icons.favorite, '血压', _formatBloodPressure(health?['blood_pressure']), const Color(0xFFEF5350),multilineValue:true,),
               SizedBox(height: 10.h),
-              _buildHealthRow(Icons.favorite, '心率', _formatHeartRate(health?['heartRate']), const Color(0xFFE91E63)),
+              _buildHealthRow(Icons.favorite, '心率', _formatHeartRate(health?['heart_rate']), const Color(0xFFE91E63)),
             ],
           ),
         ),
@@ -752,9 +756,9 @@ class _FamilyGuardPageState extends State<FamilyGuardPage> {
                                   children: [
                                     const Text('健康信息', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                                     const SizedBox(height: 2),
-                                    Text(_formatHeartRate(activeHealth?['heartRate']), style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                                    Text(_formatBloodPressure(activeHealth?['bloodPressure']), style: const TextStyle(color: Colors.white70, fontSize: 11)),
-                                    Text('睡眠: ${_formatSleepHours(activeHealth?['sleepHours'])}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text(_formatHeartRate(activeHealth?['heart_rate']), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text(_formatBloodPressure(activeHealth?['blood_pressure']), style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                                    Text('睡眠: ${_formatSleepHours(activeHealth?['sleep_hours'])}', style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                     Text(_formatWeather(activeWeather), style: const TextStyle(color: Colors.white70, fontSize: 11)),
                                   ],
                                 ),

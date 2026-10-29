@@ -153,7 +153,7 @@ class _MallPageState extends State<MallPage> {
                   SizedBox(height: 6.h),
                   Text('状态：${order['status'] ?? '--'}', style: TextStyle(color: Colors.grey[700], fontSize: 12.sp)),
                   SizedBox(height: 6.h),
-                  Text('总价：¥ ${order['totalPrice'] ?? '--'}', style: TextStyle(color: Colors.red, fontSize: 13.sp)),
+                  Text('总价：¥ ${order['total_price'] ?? '--'}', style: TextStyle(color: Colors.red, fontSize: 13.sp)),
                 ],
               ),
             );
@@ -307,7 +307,7 @@ class _MallPageState extends State<MallPage> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product, BuildContext context) {
-    final imageUrl = product['imageUrl'];
+    final imageUrl = product['image_url'] ?? product['imageUrl'];
     return GestureDetector(
       onTap: () {
         final productId = product['id'];
@@ -370,7 +370,7 @@ class _MallPageState extends State<MallPage> {
                 ),
                 SizedBox(height: 4.h),
                 Text(
-                  '已售 ${product['soldCount'] ?? 0}+',
+                  '已售 ${product['sold_count'] ?? product['soldCount'] ?? 0}+',
                   style: TextStyle(color: Colors.grey, fontSize: 10.sp),
                 ),
               ],

@@ -64,7 +64,7 @@ class WebRTCService {
     print('[WebRTC] Initializing as VIEWER (initiator), _isInitiator=$_isInitiator');
     try {
       final res = await Api.screen.createSession(targetUserId);
-      _sessionId = res['sessionId'] ?? res['id']; // Adjust based on actual API response
+      _sessionId = res['session_id'] ?? res['sessionId'] ?? res['id'];
       if (_sessionId == null) throw Exception('Failed to create session');
       await _connectWebSocket();
     } catch (e) {

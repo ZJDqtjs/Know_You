@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../../common/auth_provider.dart';
+import '../../common/http.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -110,7 +111,13 @@ class _LoginPageState extends State<LoginPage> {
       Fluttertoast.showToast(msg: '登录成功');
       // AuthGuard will handle navigation
     } catch (e) {
-      Fluttertoast.showToast(msg: '登录失败: $e');
+      String errorMsg = '登录失败';
+      if (e is ApiException) {
+        errorMsg = e.message;
+      } else {
+        errorMsg = e.toString();
+      }
+      Fluttertoast.showToast(msg: errorMsg);
     } finally {
       setState(() => _isLoading = false);
     }

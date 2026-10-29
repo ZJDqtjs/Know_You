@@ -380,7 +380,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
       if (res is Map) {
         setState(() {
           _isLiked = res['liked'] ?? _isLiked;
-          _likeCount = res['likeCount'] ?? _likeCount;
+          _likeCount = res['like_count'] ?? res['likeCount'] ?? _likeCount;
         });
       }
     } catch (e) {
@@ -439,6 +439,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final username = post['username'] ?? post['user']?['username'] ?? '匿名用户';
     final avatar = post['avatar'] ?? post['user']?['avatar'];
     final timeText = _formatTime(post['time']);
+    final images = post['images'] ?? post['image_urls'] ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -446,9 +447,16 @@ class _PostDetailPageState extends State<PostDetailPage> {
           children: [
             CircleAvatar(
               radius: 24.r,
-              backgroundImage: _buildAvatarProvider(avatar),
-              onBackgroundImageError: (_, __) {},
-              child: avatar == null ? const Icon(Icons.person) : null,
+              backgroundColor: const Color(0xFFE1BEE7),
+              backgroundImage: avatar is String && avatar.isNotEmpty
+                  ? NetworkImage(_resolveUrl(avatar))
+                  : null,
+              child: avatar == null || !(avatar is String && avatar.isNotEmpty)
+                  ? Text(
+                      (username.isNotEmpty ? username : 'U')[0].toUpperCase(),
+                      style: TextStyle(fontSize: 18.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                    )
+                  : null,
             ),
             SizedBox(width: 12.w),
             Column(
@@ -474,20 +482,20 @@ class _PostDetailPageState extends State<PostDetailPage> {
           ),
         SizedBox(height: 12.h),
         Text(
-          post['content'] ?? (post['hasVoice'] == true ? '语音内容' : ''),
-          style: TextStyle(fontSize: 16.sp, height: 1.6),
-        ),
-        if ((post['images'] is List) && (post['images'] as List).isNotEmpty) ...[
-          SizedBox(height: 12.h),
-          _buildImageGrid((post['images'] as List).cast<String>()),
-        ],
-        if (post['hasVoice'] == true) ...[
-          SizedBox(height: 16.h),
-          _VoicePlayer(
-            voiceUrl: _resolveUrl(post['voiceUrl']),
-            duration: post['voiceDuration'],
-          ),
-        ],
+                  post['content'] ?? ((post['has_voice'] == true || post['hasVoice'] == true) ? '语音内容' : ''),
+                  style: TextStyle(fontSize: 16.sp, height: 1.6),
+                ),
+                if (images is List && images.isNotEmpty) ...[
+                  SizedBox(height: 12.h),
+                  _buildImageGrid(images.cast<String>()),
+                ],
+                if (post['has_voice'] == true || post['hasVoice'] == true) ...[
+                  SizedBox(height: 16.h),
+                  _VoicePlayer(
+                    voiceUrl: _resolveUrl(post['voice_url'] ?? post['voiceUrl']),
+                    duration: post['voice_duration'] ?? post['voiceDuration'],
+                  ),
+                ],
         SizedBox(height: 24.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -543,9 +551,16 @@ class _PostDetailPageState extends State<PostDetailPage> {
               children: [
                 CircleAvatar(
                   radius: 18.r,
-                  backgroundImage: _buildAvatarProvider(avatar),
-                  onBackgroundImageError: (_, __) {},
-                  child: avatar == null ? const Icon(Icons.person, size: 20) : null,
+                  backgroundColor: const Color(0xFFE1BEE7),
+                  backgroundImage: avatar is String && avatar.isNotEmpty
+                      ? NetworkImage(_resolveUrl(avatar))
+                      : null,
+                  child: avatar == null || !(avatar is String && avatar.isNotEmpty)
+                      ? Text(
+                          (username.isNotEmpty ? username : 'U')[0].toUpperCase(),
+                          style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.bold, color: Colors.white),
+                        )
+                      : null,
                 ),
                 SizedBox(width: 12.w),
                 Expanded(
@@ -557,12 +572,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         style: TextStyle(fontSize: 14.sp, color: Colors.grey[700]),
                       ),
                       SizedBox(height: 4.h),
-                      if (comment['isVoice'] == true)
+                      if (comment['is_voice'] == true || comment['isVoice'] == true)
                         Padding(
                           padding: EdgeInsets.symmetric(vertical: 4.h),
                           child: _VoicePlayer(
-                            voiceUrl: _resolveUrl(comment['voiceUrl']),
-                            duration: comment['voiceDuration'],
+                            voiceUrl: _resolveUrl(comment['voice_url'] ?? comment['voiceUrl']),
+                            duration: comment['voice_duration'] ?? comment['voiceDuration'],
                           ),
                         )
                       else
@@ -702,13 +717,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
         ),
       ),
     );
-  }
-
-  ImageProvider _buildAvatarProvider(dynamic avatar) {
-    if (avatar is String && avatar.isNotEmpty) {
-      return NetworkImage(_resolveUrl(avatar));
-    }
-    return const AssetImage('assets/images/user.png');
   }
 
   String _formatTime(dynamic value) {
